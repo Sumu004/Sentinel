@@ -13,6 +13,8 @@ models/
 *.engine
 detected_videos/
 *.mp4
+data/
+.pytest_cache/
 
 # Secrets & config
 .env

@@ -82,3 +82,31 @@ mechanical swap if/when the project is productized.
 
 - **Pilot vertical:** remote home (recommended) vs. warehouse
 - **Public-chain anchoring** allowed, or self-hosted immutable store for air-gapped clients?
+
+## Quickstart (Phase 2.0 — tested, runs today, $0 cost)
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+
+# terminal 1 — local backend (replaces AWS API Gateway; see DECISIONS.md D8)
+uvicorn cloud.backend.app:app --port 8000
+
+# terminal 2 — edge pipeline against your webcam
+python -m edge.main
+```
+
+This runs the real pipeline end to end: webcam → motion-based detection
+(zero-download default; Phase 2.1 swaps in the trained RF-DETR/YOLO12 model) →
+centroid tracking → event debouncing → a pre/post-event clip recorded to
+`./data/clips/` → the clip hashed and signed (`evidence/signing.py`) → the
+event posted to the local backend → queryable at `GET /events`.
+
+Run the tests (no camera or GPU required):
+
+```bash
+python -m pytest tests/ -v
+```
+
+See [ROADMAP.md](ROADMAP.md) for what Phase 2.1+ adds on top of this.

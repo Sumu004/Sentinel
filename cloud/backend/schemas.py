@@ -1,0 +1,16 @@
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class EventIn(BaseModel):
+    event_id: str
+    site_id: str
+    label: str
+    track_id: int
+    started_at: str
+    detected_at: str
+
+
+class EventOut(EventIn):
+    assigned: bool = Field(default=False)
