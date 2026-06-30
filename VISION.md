@@ -61,14 +61,16 @@ control room:
 
 Not one model — a stack, each tuned to one job:
 
-- **Detection** — fine-tuned YOLO11 (or RF-DETR for a permissive licence). Closed-set,
-  fully quantizable, low false-alarm rate. Open-vocabulary models (YOLO-World)
-  are for prototyping and as a *teacher* for few-shot onboarding, not the runtime.
-- **Tracking + re-identification** — ByteTrack/BoT-SORT + OSNet/TransReID. The
+- **Detection** — fine-tuned **RF-DETR (Apache-2.0)** by default; YOLO11 only under a
+  purchased enterprise licence (YOLO is AGPL). Closed-set, fully quantizable, low
+  false-alarm rate. Open-vocabulary models (YOLO-World) are for prototyping and as a
+  *teacher* for few-shot onboarding, not the runtime. See [DECISIONS.md](DECISIONS.md) D1.
+- **Tracking + re-identification** — ByteTrack (MIT) + OSNet (MIT). The
   same person across cameras and across days.
-- **Pose & action recognition** — YOLO11-pose + a temporal model (SlowFast /
+- **Pose & action recognition** — **RTMPose (Apache-2.0)** + a temporal model (SlowFast /
   VideoMAE). Falls, climbing, fighting, tampering, concealment — *behaviour*,
-  not objects. Falls are pose-based, never a bounding-box class.
+  not objects. Falls are pose-based, never a bounding-box class. (RTMPose, not
+  YOLO11-pose, which is also AGPL — see [DECISIONS.md](DECISIONS.md) D2.)
 - **Anomaly detection (unsupervised)** — catches the threats nobody labelled:
   *"this has never happened here before."* The core value for guarding the unknown.
 - **Audio event detection** — YAMNet / PANNs. Glass break, gunshot, scream.
@@ -122,8 +124,10 @@ federated aggregate → OTA push`. Smarter at every site, every week, automatica
 
 - **Sign at source** — hash + device-key-sign the clip on the camera the instant
   it is recorded.
-- **Immutable anchor** — Merkle-tree the day's hashes; anchor the root to a ledger
-  (QLDB / optional public chain). Tampering with any clip breaks the tree.
+- **Immutable anchor** — Merkle-tree the day's hashes; anchor the root via a public
+  timestamp (OpenTimestamps/Bitcoin) and store originals in WORM (S3 Object Lock).
+  Tampering with any clip breaks the tree. (Note: AWS QLDB was discontinued
+  31 Jul 2025 — do not build on it. See [DECISIONS.md](DECISIONS.md) D6.)
 - **Chain of custody** — every view, export, and access logged and signed.
 - **Content provenance** — C2PA-compatible so evidence interoperates with courts,
   insurers, journalists.

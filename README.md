@@ -36,14 +36,28 @@ When no human is watching the feed, the priorities invert:
 | L6 | Platform | Multi-tenant SaaS, digital-twin awareness, notifications, integrations, compliance |
 
 Full detail in [VISION.md](VISION.md). Phased delivery plan in [ROADMAP.md](ROADMAP.md).
+Researched technology choices (with licensing and end-of-life loopholes closed) in
+[DECISIONS.md](DECISIONS.md).
 
 ## Status
 
 Early-stage. Currently seeding vision and roadmap; Phase 2.0 (runnable
 single-site pipeline) is the first buildable milestone.
 
-## Open decisions
+## Technology choices (researched — see [DECISIONS.md](DECISIONS.md))
 
-- **Edge hardware:** Jetson Orin · Intel NUC + OpenVINO · Pi 5 + Hailo
-- **Model licence:** AGPL YOLO11 · permissive RF-DETR
-- **Pilot vertical:** remote home · warehouse
+The default shipping stack is **fully permissive** (Apache-2.0 / MIT) and depends on
+**no discontinued service**:
+
+- **Detection:** RF-DETR (Apache-2.0) — matches YOLO11x accuracy, no AGPL trap
+- **Pose/falls:** RTMPose (Apache-2.0) — not YOLO11-pose (also AGPL)
+- **Tracking / re-ID:** ByteTrack + OSNet (MIT)
+- **Reasoning VLM:** Qwen2.5-VL 3B/7B (Apache-2.0)
+- **Federated learning:** Flower (Apache-2.0)
+- **Edge hardware:** Jetson Orin NX 16GB reference, Orin Nano 8GB cost tier, Pi 5 + Hailo-8 entry tier
+- **Evidence:** C2PA + OpenTimestamps + S3 Object Lock (WORM) — **not** AWS QLDB (discontinued 31 Jul 2025)
+
+## Still open (product-owner call)
+
+- **Pilot vertical:** remote home (recommended) vs. warehouse
+- **Public-chain anchoring** allowed, or self-hosted immutable store for air-gapped clients?

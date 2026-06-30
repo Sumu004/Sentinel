@@ -70,7 +70,9 @@ with reproducible training and an honest FP metric.
 **Goal:** evidence that holds up in court / insurance.
 
 - **Sign at the edge** — hash + device-key-sign clips before upload.
-- **Immutable anchor** — Merkle-tree daily hashes, anchor the root (QLDB / chain).
+- **Immutable anchor** — Merkle-tree daily hashes; anchor the root via OpenTimestamps
+  (Bitcoin) + S3 Object Lock (WORM). Not AWS QLDB — discontinued 31 Jul 2025. See
+  [DECISIONS.md](DECISIONS.md) D6.
 - **Chain-of-custody log** — record every access/view/export.
 - Fix the `UnboundLocalError` and remove the dead HTTP path while here.
 - C2PA-compatible provenance; verifiable redaction (blur + prove unedited).
