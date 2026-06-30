@@ -178,7 +178,9 @@ runs on day one with no purchase and no AWS bill.
 | Pose | RTMPose / ViTPose (D2) | Same — open weights, free | $0 | — |
 | Tracking / re-ID | ByteTrack / OSNet (D3) | Same — already free (MIT) | $0 | — |
 | Reasoning VLM | Frontier API escalation tier (D4) | **Qwen2.5-VL only** — self-hosted via Ollama/vLLM, run locally, no API key, no per-call cost. Frontier tier **disabled by a config flag**, not removed from the code | $0 | When you want to demo top-tier reasoning, or go live |
-| Cloud backend | AWS Lambda + API Gateway + DynamoDB | **Local FastAPI service + SQLite**, run on your machine — identical API surface, swap the storage driver later | $0 | First multi-site deployment (AWS free tier covers a lot before that anyway) |
+| Cloud backend — compute | AWS Lambda | **Keep it.** Lambda's free tier is *always free* (permanent, not time-limited): 1M requests + 400,000 GB-seconds/month. No expiry. | $0 forever, at dev scale | Only if traffic exceeds 1M req/month |
+| Cloud backend — database | DynamoDB | **Keep it.** Also *always free* (permanent): 25GB storage + 25 read/write capacity units (~200M requests/month). No expiry. | $0 forever, at dev scale | Only if storage/throughput exceeds the above |
+| Cloud backend — API layer | API Gateway | **Do not use as-is.** Its free tier is **12 months only**, new accounts only, then bills from the *first* call with no grace period ($3.50/M REST, $1/M HTTP). Replace with a **local FastAPI route**, or invoke the Lambda directly via `boto3`/`invoke_function` | $0, avoids a future surprise bill | Swap to API Gateway deliberately, once ready to expose a public endpoint |
 | Object storage | S3 + Object Lock (D6) | **Local filesystem**, or self-hosted **MinIO** (S3-API-compatible, free, runs in Docker) | $0 | When you need off-site/WORM guarantees for real evidence |
 | Evidence anchor | OpenTimestamps (D6) | **Same — already free.** Public Bitcoin-calendar servers, no account, no cost, real cryptographic proof from day one | $0 | No upgrade needed — this one's free forever |
 | Decentralized storage | IPFS (existing code) | **Same — already free.** Self-hosted local IPFS node (`ipfs daemon`), exactly as the original MVP did | $0 | Optional: pin to a paid pinning service for durability later |
@@ -191,6 +193,18 @@ runner, compute target). Phase 2.0–2.2 of the [roadmap](ROADMAP.md) build enti
 on this free column. Swapping in real hardware or a paid tier later is a config
 change and a driver implementation, not a redesign — that's the point of the
 layered architecture in [VISION.md](VISION.md).
+
+**Not all AWS free tiers are the same shape.** Lambda and DynamoDB's free tiers
+are *always-free* — permanent, no expiry, just a usage ceiling. API Gateway's is
+*time-limited* — 12 months from account creation, then full price from request
+one, no grace period. Treat "AWS free tier" as three separate promises, not one;
+this is the actual loophole, not a hypothetical.
+
+**Regardless of the above: set a $1 AWS Billing budget alarm** (Billing →
+Budgets) on day one, even while everything is projected to be $0. It costs
+nothing, takes two minutes, and is the only real protection against a
+misconfigured loop, an account-creation-date surprise, or a free-tier term
+changing under you (as it did in July 2025).
 
 **The only thing to watch:** AWS services have free tiers, not zero-cost
 guarantees — Lambda (1M requests/mo), DynamoDB (25GB), API Gateway (1M calls,

@@ -55,9 +55,12 @@ applied later without a redesign. Full mapping in [DECISIONS.md](DECISIONS.md) D
 | Jetson edge hardware | Your own CPU, or free Colab/Kaggle GPU for training |
 | IP cameras | Laptop webcam |
 | Frontier VLM escalation tier | Disabled — Qwen2.5-VL self-hosted handles everything |
-| AWS Lambda + API Gateway + DynamoDB | Local FastAPI + SQLite |
+| Lambda + DynamoDB | **Keep as-is** — both are always-free (permanent, not time-limited) at dev scale |
+| API Gateway | Local FastAPI route or direct `boto3` invoke — its free tier is 12-months-only, then bills from request one |
 | S3 + Object Lock | Local filesystem or self-hosted MinIO |
 | OpenTimestamps / IPFS | Already free — used as-is |
+
+Set a $1 AWS Billing budget alarm regardless — costs nothing, catches surprises.
 
 ## Technology choices (researched — see [DECISIONS.md](DECISIONS.md))
 
