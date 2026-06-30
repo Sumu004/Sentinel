@@ -163,6 +163,43 @@ cost is communication overhead and a learning curve beyond default strategies.
 
 ---
 
+## D8 — Build it for $0 now; hardware and paid tiers are an upgrade path, not a rewrite
+
+**Choice:** every component above has a free substitute for development. Nothing
+in the architecture changes — only which implementation of each interface runs.
+The "best" picks from D1–D7 stay the documented target; this is what actually
+runs on day one with no purchase and no AWS bill.
+
+| Component | Paid / target pick | **Free substitute (build with this now)** | Cost today | Upgrade trigger |
+|---|---|---|---|---|
+| Compute | Jetson Orin NX/Nano (D5) | **Your own CPU**, or free **Google Colab T4** / **Kaggle T4** (30 hrs/week) for training | $0 | First real edge deployment |
+| Camera | IP cameras (RTSP/ONVIF) | **Laptop webcam**, or free public RTSP test streams | $0 | First real site |
+| Detection model | RF-DETR / YOLO12 bake-off (D1) | Same models — **open weights, self-hosted, free to run**. Only the *enterprise licence* (if YOLO chosen) costs money, and only at commercialization | $0 | Never, unless you commercialize on AGPL YOLO |
+| Pose | RTMPose / ViTPose (D2) | Same — open weights, free | $0 | — |
+| Tracking / re-ID | ByteTrack / OSNet (D3) | Same — already free (MIT) | $0 | — |
+| Reasoning VLM | Frontier API escalation tier (D4) | **Qwen2.5-VL only** — self-hosted via Ollama/vLLM, run locally, no API key, no per-call cost. Frontier tier **disabled by a config flag**, not removed from the code | $0 | When you want to demo top-tier reasoning, or go live |
+| Cloud backend | AWS Lambda + API Gateway + DynamoDB | **Local FastAPI service + SQLite**, run on your machine — identical API surface, swap the storage driver later | $0 | First multi-site deployment (AWS free tier covers a lot before that anyway) |
+| Object storage | S3 + Object Lock (D6) | **Local filesystem**, or self-hosted **MinIO** (S3-API-compatible, free, runs in Docker) | $0 | When you need off-site/WORM guarantees for real evidence |
+| Evidence anchor | OpenTimestamps (D6) | **Same — already free.** Public Bitcoin-calendar servers, no account, no cost, real cryptographic proof from day one | $0 | No upgrade needed — this one's free forever |
+| Decentralized storage | IPFS (existing code) | **Same — already free.** Self-hosted local IPFS node (`ipfs daemon`), exactly as the original MVP did | $0 | Optional: pin to a paid pinning service for durability later |
+| Federated learning | Flower across real sites (D7) | **Flower in simulation mode** — multiple virtual clients on one machine. Proves the federated-learning code path before there's a fleet to federate across | $0 | Second physical site online |
+| Synthetic/training data | Licensed datasets, diffusion-generated rare events | **Public datasets** (COCO, D-Fire, SH17, etc. — see D1/D3 sources) + your own webcam recordings | $0 | When real-site footage volume makes the model good enough to matter |
+
+**Why this works without compromising the architecture:** every "free substitute"
+sits behind the same interface as its paid counterpart (storage driver, model
+runner, compute target). Phase 2.0–2.2 of the [roadmap](ROADMAP.md) build entirely
+on this free column. Swapping in real hardware or a paid tier later is a config
+change and a driver implementation, not a redesign — that's the point of the
+layered architecture in [VISION.md](VISION.md).
+
+**The only thing to watch:** AWS services have free tiers, not zero-cost
+guarantees — Lambda (1M requests/mo), DynamoDB (25GB), API Gateway (1M calls,
+first 12 months) are generous but not infinite, and a misconfigured loop can
+generate a bill. Defaulting to local FastAPI + SQLite for development sidesteps
+this entirely — there's no AWS account in the loop until you choose to deploy.
+
+---
+
 ## Net posture (performance-first)
 
 The stack is chosen on **capability per tier**: best edge real-time model + best

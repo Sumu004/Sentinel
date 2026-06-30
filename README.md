@@ -44,6 +44,21 @@ Researched technology choices (with licensing and end-of-life loopholes closed) 
 Early-stage. Currently seeding vision and roadmap; Phase 2.0 (runnable
 single-site pipeline) is the first buildable milestone.
 
+## Cost to build right now: $0
+
+Every component has a free, self-hosted substitute for development — same
+interfaces, no purchase, no cloud bill. Hardware and paid tiers are an **upgrade**,
+applied later without a redesign. Full mapping in [DECISIONS.md](DECISIONS.md) D8.
+
+| Target (later) | Build with now (free) |
+|---|---|
+| Jetson edge hardware | Your own CPU, or free Colab/Kaggle GPU for training |
+| IP cameras | Laptop webcam |
+| Frontier VLM escalation tier | Disabled — Qwen2.5-VL self-hosted handles everything |
+| AWS Lambda + API Gateway + DynamoDB | Local FastAPI + SQLite |
+| S3 + Object Lock | Local filesystem or self-hosted MinIO |
+| OpenTimestamps / IPFS | Already free — used as-is |
+
 ## Technology choices (researched — see [DECISIONS.md](DECISIONS.md))
 
 Chosen on **capability first** — best model per tier, license deferred to
