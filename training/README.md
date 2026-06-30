@@ -15,6 +15,43 @@ home. That fixes the class set:
 | `package` | Porch-theft detection — delivered, then taken | [Packages dataset (Roboflow public)](https://public.roboflow.com/object-detection/packages-dataset) |
 | `animal` | **Suppression class, not a threat** — pets/wildlife are the #1 false-alarm source for home cameras; the model must learn to *not* alarm on them | COCO subset (`dog`, `cat`) |
 
+### Night/low-light coverage (closes the "TBD" gap from the first pass)
+
+A home camera spends most of its threat-relevant hours in the dark — a model
+only trained on COCO's mostly-daylight images will degrade exactly when it
+matters. Two real, sourced datasets to blend in:
+
+- **[ExDark](https://github.com/cs-chan/Exclusively-Dark-Image-Dataset)** —
+  7,363 images across 10 low-light conditions, 12 classes (PASCAL-VOC-like,
+  includes `People`). License is BSD-3 **with a catch**: the maintainers ask
+  commercial users to contact them directly — not a blocking license like
+  SH17's CC-NC, but a real caveat worth the same "flag before commercializing"
+  treatment as D1's licensing notes.
+- **[NightOwls](https://www.nightowls-dataset.org/)** — pedestrians at night,
+  purpose-built for low-light person detection in urban/outdoor scenes.
+
+## Architecture — research findings (this session)
+
+Re-checked the D1 bake-off against the current SOTA landscape rather than
+assuming RF-DETR/YOLO12 were still the right two:
+
+- **RF-DETR remains the strongest single pick** — first open model to break 60
+  mAP on COCO (found via neural architecture search, not hand-design), and it
+  beats both **D-FINE** and **LW-DETR** on RF100-VL, a *generalizability*
+  benchmark — closer to what fine-tuning on a small home-camera dataset
+  actually needs than raw COCO accuracy.
+- **D-FINE was seriously considered as a third candidate** (Apache-2.0, up to
+  59.3% AP after Objects365 pretraining, 124 FPS at 54% AP on a T4 — genuinely
+  excellent numbers). Checked its actual install path before adding it to the
+  scaffold: **it is not pip-installable** — fine-tuning means cloning the repo,
+  editing YAML configs, and launching via `torchrun` (its own examples assume
+  4 GPUs). That's real friction against the D8 "free, fast iteration on a
+  single Colab GPU" constraint that RF-DETR/YOLO12 don't have. Decision: D-FINE
+  moves to the **cloud re-analysis** role (see D1) where the one-time setup
+  cost is worth paying for the accuracy ceiling; it's out of the edge bake-off.
+- **No YOLOv13 exists** as of this research — the current Ultralytics line
+  tops out at YOLO12. Worth recording so nobody chases it later.
+
 Fire/smoke, weapons, and PPE (D1/D3 candidates) are real classes for the
 warehouse/industrial vertical — deferred until that pilot starts, so Phase 2.1
 doesn't train a 17-class model nobody asked for yet. Sources, once needed:
@@ -84,6 +121,41 @@ results = model.train(
 Confirmed: `yolo12n.yaml` (the architecture, no pretrained weights) loads and
 trains cleanly — verified with a 1-epoch run on synthetic data. Ultralytics
 8.4.x ships YOLO12 natively, no extra install beyond the base package.
+**For the real fine-tune, start from `yolo12s.pt` (pretrained), not the bare
+`.yaml`** — the smoke test used the architecture-only file specifically to
+avoid a weight download while testing the training loop; real fine-tuning
+should transfer from COCO weights like RF-DETR does.
+
+## Fine-tuning strategy — layer freezing and augmentation
+
+Both candidates fine-tune from COCO-pretrained weights (RF-DETR does this by
+default; YOLO12 needs `yolo12s.pt` explicitly, per above). Two concrete,
+research-backed refinements over a default fine-tune:
+
+- **Freeze the backbone first, unfreeze gradually.** Early backbone layers
+  learn generic features (edges, textures) that transfer regardless of
+  domain; the home-camera-specific signal lives in the neck/head. Recipe:
+  start with the backbone frozen (`ultralytics` supports this via the
+  `freeze` training arg, e.g. `freeze=10` for the first 10 layers), train a
+  few epochs, then unfreeze and continue at a lower LR. This is the standard
+  fix for catastrophic forgetting when fine-tuning on a dataset orders of
+  magnitude smaller than COCO — exactly our situation (a few hundred home-camera
+  images vs. COCO's 118k).
+- **CCTV-realistic augmentation**, on top of the libraries' defaults: motion
+  blur, low-light/contrast shifts (paired with the ExDark/NightOwls data
+  above), and compression-artifact simulation — closer to what an actual
+  IP camera feed looks like than clean photos.
+
+## Inference-time: SAHI for small/distant objects
+
+**Confirmed installed and working this session** (`pip install -U sahi`,
+imports cleanly, supports both RF-DETR and Ultralytics models natively). A
+fixed wide-FOV home camera will often see a person as a small, distant blob —
+exactly the failure mode standard detection struggles with. SAHI tiles the
+frame, runs detection per-tile, and stitches results — measured gains on
+small-object benchmarks (VisDrone/xView) are **+5 to +15 AP** depending on the
+detector. This is an inference-time technique, not a training change — apply
+it on top of whichever model wins the bake-off, no retraining required.
 
 ## Bake-off methodology (D1)
 
@@ -123,10 +195,15 @@ real training needs one for real epoch counts on real dataset sizes:
   a 6-image synthetic COCO dataset, produced real mAP/precision/recall numbers.
 - YOLO12: trained 1 epoch on a 6-image synthetic YOLO dataset on CPU, completed
   in under a second, produced real loss/mAP numbers.
+- `pip install -U sahi` — clean install, `AutoDetectionModel`/`get_sliced_prediction`
+  import cleanly (v0.12.1). Not yet run against a trained model — needs one to exist first.
+- Checked D-FINE's actual install path (not just its paper) before excluding it
+  from the edge bake-off — confirmed no pip package, `torchrun`-based training.
 - **Not tested:** training on a real dataset (Roboflow downloads), GPU training,
-  ONNX/TensorRT export, the false-alarm metric (needs real footage). These are
-  the actual Phase 2.1 work — this session proved the tooling is sound, not
-  that a deployable model exists yet.
+  ONNX/TensorRT export, the false-alarm metric (needs real footage), SAHI against
+  a real trained model. These are the actual Phase 2.1 work — this session
+  proved the tooling and the architecture choice are sound, not that a
+  deployable model exists yet.
 
 ## Files in this directory
 

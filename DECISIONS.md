@@ -34,11 +34,28 @@ and **YOLO12 (attention-enhanced CNN)**. Add a heavy cloud re-scorer for max acc
   (nano ~431 FPS / 2.3 ms, medium ~221 FPS / 4.5 ms on T4+TensorRT); YOLO12 clusters
   in the mid-latency/high-accuracy region and is often faster at the small end with
   the mature Ultralytics tooling. Picking on a benchmark beats picking on theory.
+- **RF-DETR is the current open-weights ceiling on COCO** — the first model to
+  break 60 mAP, found via neural architecture search (NAS) rather than hand-design,
+  and it beats both D-FINE and LW-DETR on the broader RF100-VL generalizability
+  benchmark (not just COCO) — relevant since "generalizes to a dataset it wasn't
+  tuned for" is exactly what fine-tuning on a small home-camera dataset needs.
+- **Third candidate considered and deliberately excluded from the edge bake-off:
+  D-FINE** (Apache-2.0, up to 59.3% AP after Objects365 pretraining, 124 FPS at
+  54% AP on a T4). Strong numbers, but verified this session: **not pip-installable**
+  — requires cloning the repo, editing YAML configs, and launching via `torchrun`
+  (its own examples assume 4-GPU distributed training). That's real friction against
+  the D8 "build it free, iterate fast on Colab/Kaggle" constraint. Keep it as the
+  **cloud re-analysis** candidate (below) where the setup cost is paid once, not the
+  edge candidate where RF-DETR/YOLO12's one-line `pip install` + `.train()` wins on
+  iteration speed.
 - **Best accuracy, full stop (cloud re-analysis):** for offline forensic re-scoring
-  of flagged clips, run a heavyweight detector (e.g. **Co-DETR / DINO**-class, which
-  top the COCO leaderboard) where latency doesn't matter. Edge stays real-time;
-  cloud gets the last few points of recall.
+  of flagged clips, run a heavyweight detector where latency doesn't matter —
+  **D-FINE-X** (59.3% AP after Objects365 pretrain) is now the concrete pick here,
+  not a generic "Co-DETR/DINO-class" placeholder. Edge stays real-time; cloud gets
+  the last few points of recall.
 - RF-DETR being NMS-free still simplifies the edge pipeline — a tiebreaker, not a gate.
+- **Note for future searches: there is no YOLOv13** as of this research (current
+  Ultralytics line tops out at YOLO12) — don't chase a model that doesn't exist.
 
 **License note (secondary):** YOLO12 is AGPL-3.0, RF-DETR is Apache-2.0. Irrelevant
 now; at commercialization either buy the Ultralytics enterprise licence or fall back
