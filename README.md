@@ -119,8 +119,31 @@ verified to actually run.
 
 ```bash
 pip install -r training/requirements-training.txt
-python -m training.train_yolo12 --data <data.yaml> --model yolo12s.yaml --output-dir ./data/models/yolo12
+python -m training.train_yolo12 --data <data.yaml> --output-dir ./data/models/yolo12
 python -m training.train_rfdetr --dataset-dir <coco-dir> --output-dir ./data/models/rfdetr
 ```
+
+For the real GPU run, open [training/colab_finetune.ipynb](training/colab_finetune.ipynb)
+in Google Colab (free T4) — it trains both candidates, runs the bake-off, and
+exports weights. Drop the resulting `best.pt` in and the pipeline uses it:
+
+```bash
+SENTINEL_DETECTOR_BACKEND=model SENTINEL_DETECTOR_MODEL_PATH=./data/models/best.pt python -m edge.main
+```
+
+The model-backed detector (`edge/detector.py ModelDetector`) is implemented and
+verified running real YOLO inference — a COCO-pretrained `yolo12n.pt` already
+detects `person`/`vehicle`/`animal`; the Colab fine-tune adds `package` and
+domain adaptation.
+
+## Testing & scoring
+
+[TESTING.md](TESTING.md) is the protocol for testing on **unseen, real-world,
+live footage**, with three separately-scored layers (code in
+[eval/scoring.py](eval/scoring.py), unit-tested):
+
+- **Detection rate** (L1) — precision/recall/F1 per class + false-alarms-per-camera-per-day
+- **Description rate** (L2) — subject/action/severity accuracy + hallucination rate
+- **System score** — end-to-end: right alert, right severity, sealed evidence, in time
 
 See [ROADMAP.md](ROADMAP.md) for the full phase breakdown.

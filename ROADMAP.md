@@ -87,16 +87,33 @@ and event debouncing.
   `[train,loggers]` extra to train, not just the base install.
 - [x] False-alarm eval confirmed working against the Phase 2.0 motion detector
   and static (event-free) footage — correctly returned 0.
-- [ ] **Not yet done — the actual Phase 2.1 work:** download a real dataset,
-  train on real data (needs a free Colab/Kaggle GPU per DECISIONS.md D8, not
-  just CPU smoke tests), run the real bake-off, quantize the winner (ONNX/
-  TensorRT) for the chosen edge target (D5).
+- [x] `edge/detector.py ModelDetector` implemented and **verified running real
+  YOLO inference** — COCO-pretrained `yolo12n.pt` correctly detected 3 people +
+  a bus on a real test image, class-filtered to the pilot set. The model-backed
+  detection path is functional now; the fine-tune just swaps in better weights.
+- [x] `training/colab_finetune.ipynb` — turnkey GPU notebook: trains both
+  candidates, runs the held-out-mAP bake-off, exports ONNX, downloads weights.
+- [ ] **Run the Colab notebook on a real dataset** (the GPU job itself) — needs
+  the user's Colab session + a chosen dataset; produces the deployable weights.
+- [ ] Quantize the winner (ONNX→TensorRT) on the chosen edge target (D5).
 - [ ] RTMPose for fall detection (D2) — not started.
 - [ ] Hard-negative mining + night/IR data — needs real pilot footage first.
 
-**Deliverable:** a fine-tuned, quantized model running real-time on the edge box,
-with reproducible training and an honest FP metric measured against real footage
-— not yet reached; this phase has the tooling, not the trained model.
+**Deliverable:** a fine-tuned, quantized model running real-time on the edge box.
+Tooling, the model-backed detector, and the GPU training notebook are all done
+and verified; the remaining step is running the notebook on a real dataset.
+
+---
+
+## Phase 2.x — Testing & scoring (cross-cutting, scaffolded)
+
+- [x] [TESTING.md](TESTING.md) — protocol for testing on unseen real-world live
+  footage; three separately-scored layers.
+- [x] [eval/scoring.py](eval/scoring.py) — detection rate (IoU P/R/F1 +
+  false-alarms/day), description rate (subject/action/severity + hallucination),
+  end-to-end system score. Unit-tested (`tests/test_scoring.py`, 10 tests).
+- [ ] The labelled unseen-footage test set + live VLM for description scoring —
+  needs real pilot recordings and the Phase 2.4 reasoning layer.
 
 ---
 

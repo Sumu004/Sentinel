@@ -1,0 +1,258 @@
+"""Scoring system for Sentinel (see TESTING.md for the protocol that produces
+the inputs to these functions).
+
+Three separate scores, deliberately kept apart because they measure different
+failure modes and the product owner asked for separate rates:
+
+1. DETECTION rate  (L1 perception) — did the detector find and correctly
+   classify the objects that were actually there? Precision/recall/F1 per class
+   via IoU matching, plus the unattended-site metric: false alarms per camera
+   per day.
+
+2. DESCRIPTION rate (L2 reasoning)  — given a real event, did the generated
+   natural-language description correctly characterise it (right subject, right
+   action, right severity) without hallucinating?
+
+3. SYSTEM score (end-to-end)        — did the right alert, with correct
+   severity and sealed evidence, actually reach the operator? A composite that
+   only rewards an event that succeeded at every stage.
+
+All three are intentionally simple, transparent, and runnable on a laptop — no
+ML needed to *score*, only to produce the predictions being scored.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+# --------------------------------------------------------------------------- #
+# 1. DETECTION rate
+# --------------------------------------------------------------------------- #
+
+Box = tuple[float, float, float, float]  # x, y, w, h
+
+
+@dataclass(frozen=True)
+class GTBox:
+    label: str
+    box: Box
+
+
+@dataclass(frozen=True)
+class PredBox:
+    label: str
+    confidence: float
+    box: Box
+
+
+def iou(a: Box, b: Box) -> float:
+    ax, ay, aw, ah = a
+    bx, by, bw, bh = b
+    ax2, ay2, bx2, by2 = ax + aw, ay + ah, bx + bw, by + bh
+    ix1, iy1 = max(ax, bx), max(ay, by)
+    ix2, iy2 = min(ax2, bx2), min(ay2, by2)
+    iw, ih = max(0.0, ix2 - ix1), max(0.0, iy2 - iy1)
+    inter = iw * ih
+    union = aw * ah + bw * bh - inter
+    return inter / union if union > 0 else 0.0
+
+
+@dataclass
+class DetectionScore:
+    per_class: dict[str, dict[str, float]] = field(default_factory=dict)
+    precision: float = 0.0
+    recall: float = 0.0
+    f1: float = 0.0
+    true_positives: int = 0
+    false_positives: int = 0
+    false_negatives: int = 0
+
+
+def score_detections(
+    preds: list[PredBox], gts: list[GTBox], iou_threshold: float = 0.5
+) -> DetectionScore:
+    """Greedy IoU matching (highest-confidence pred first), per the standard
+    object-detection convention. Each GT box can be matched at most once;
+    unmatched preds are false positives, unmatched GTs are false negatives.
+    """
+    counts: dict[str, dict[str, int]] = {}
+
+    def bump(label: str, key: str) -> None:
+        counts.setdefault(label, {"tp": 0, "fp": 0, "fn": 0})[key] += 1
+
+    used_gt: set[int] = set()
+    for pred in sorted(preds, key=lambda p: p.confidence, reverse=True):
+        best_idx, best_iou = -1, iou_threshold
+        for i, gt in enumerate(gts):
+            if i in used_gt or gt.label != pred.label:
+                continue
+            cur = iou(pred.box, gt.box)
+            if cur >= best_iou:
+                best_idx, best_iou = i, cur
+        if best_idx >= 0:
+            used_gt.add(best_idx)
+            bump(pred.label, "tp")
+        else:
+            bump(pred.label, "fp")
+
+    for i, gt in enumerate(gts):
+        if i not in used_gt:
+            bump(gt.label, "fn")
+
+    score = DetectionScore()
+    for label, c in counts.items():
+        tp, fp, fn = c["tp"], c["fp"], c["fn"]
+        p = tp / (tp + fp) if (tp + fp) else 0.0
+        r = tp / (tp + fn) if (tp + fn) else 0.0
+        f1 = 2 * p * r / (p + r) if (p + r) else 0.0
+        score.per_class[label] = {
+            "precision": round(p, 4),
+            "recall": round(r, 4),
+            "f1": round(f1, 4),
+            "tp": tp,
+            "fp": fp,
+            "fn": fn,
+        }
+        score.true_positives += tp
+        score.false_positives += fp
+        score.false_negatives += fn
+
+    tp, fp, fn = score.true_positives, score.false_positives, score.false_negatives
+    score.precision = round(tp / (tp + fp), 4) if (tp + fp) else 0.0
+    score.recall = round(tp / (tp + fn), 4) if (tp + fn) else 0.0
+    score.f1 = (
+        round(2 * score.precision * score.recall / (score.precision + score.recall), 4)
+        if (score.precision + score.recall)
+        else 0.0
+    )
+    return score
+
+
+def false_alarms_per_day(spurious_events: int, hours_observed: float) -> float:
+    """The metric that actually matters for an unattended site: how often does
+    the system page someone when nothing happened? Computed over event-free
+    footage (see TESTING.md). Lower is better; this is the dominant driver of
+    whether an operator keeps trusting the alerts.
+    """
+    if hours_observed <= 0:
+        raise ValueError("hours_observed must be > 0")
+    return round(spurious_events * (24.0 / hours_observed), 2)
+
+
+# --------------------------------------------------------------------------- #
+# 2. DESCRIPTION rate
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class DescriptionGT:
+    """Ground truth for one event's description, labelled by a human reviewer."""
+
+    subject: str  # e.g. "person", "vehicle", "package"
+    action: str  # e.g. "loitering", "approaching", "taking"
+    severity: str  # "high" | "medium" | "low"
+
+
+@dataclass
+class DescriptionResult:
+    subject_correct: bool
+    action_correct: bool
+    severity_correct: bool
+    hallucinated: bool
+    score: float  # 0..1, fraction of the three attributes correct, 0 if hallucinated
+
+
+def score_description(
+    predicted_text: str, gt: DescriptionGT, hallucination_terms: list[str] | None = None
+) -> DescriptionResult:
+    """Scores a generated description against human-labelled attributes by
+    keyword presence. This is a transparent rubric harness, not a final word —
+    for nuanced grading swap in an LLM-judge that returns the same three
+    booleans. Keeping it keyword-based means the score is explainable and
+    reproducible offline.
+
+    `hallucination_terms`: words that, if present, indicate the description
+    asserted something that wasn't in the event (e.g. "weapon" when the GT is a
+    delivery). A hallucination zeroes the score regardless of other matches —
+    a confident wrong alarm is worse than a vague right one.
+    """
+    text = predicted_text.lower()
+    subject_ok = gt.subject.lower() in text
+    action_ok = gt.action.lower() in text
+    severity_ok = gt.severity.lower() in text
+
+    hallucinated = bool(hallucination_terms) and any(t.lower() in text for t in hallucination_terms)
+
+    if hallucinated:
+        return DescriptionResult(subject_ok, action_ok, severity_ok, True, 0.0)
+
+    score = round(sum([subject_ok, action_ok, severity_ok]) / 3, 4)
+    return DescriptionResult(subject_ok, action_ok, severity_ok, False, score)
+
+
+def description_rate(results: list[DescriptionResult]) -> dict[str, float]:
+    """Aggregate description performance across a test set of events."""
+    if not results:
+        return {"mean_score": 0.0, "subject_acc": 0.0, "action_acc": 0.0, "severity_acc": 0.0, "hallucination_rate": 0.0}
+    n = len(results)
+    return {
+        "mean_score": round(sum(r.score for r in results) / n, 4),
+        "subject_acc": round(sum(r.subject_correct for r in results) / n, 4),
+        "action_acc": round(sum(r.action_correct for r in results) / n, 4),
+        "severity_acc": round(sum(r.severity_correct for r in results) / n, 4),
+        "hallucination_rate": round(sum(r.hallucinated for r in results) / n, 4),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# 3. SYSTEM score (end-to-end)
+# --------------------------------------------------------------------------- #
+
+
+@dataclass(frozen=True)
+class EventOutcome:
+    """One real event from the live test, scored at every stage of the pipeline."""
+
+    detected: bool  # did the detector fire on the real event?
+    described_correctly: bool  # was the description right (per DescriptionResult.score >= threshold)?
+    severity_routed_correctly: bool  # did it escalate/suppress as it should have?
+    evidence_sealed: bool  # was a verifiable clip produced (evidence/signing.py)?
+    latency_ok: bool  # did the alert arrive within the latency budget?
+
+
+def system_score(outcomes: list[EventOutcome], weights: dict[str, float] | None = None) -> dict[str, float]:
+    """End-to-end score. An event only fully 'counts' if it cleared every
+    stage; partial credit is given per-stage so a regression is diagnosable
+    (e.g. detection fine, descriptions slipping). The composite is the weighted
+    mean of the per-stage pass rates.
+    """
+    if not outcomes:
+        return {"system_score": 0.0}
+
+    w = weights or {
+        "detected": 0.35,
+        "described_correctly": 0.20,
+        "severity_routed_correctly": 0.20,
+        "evidence_sealed": 0.15,
+        "latency_ok": 0.10,
+    }
+    n = len(outcomes)
+    stage_rates = {
+        "detected": sum(o.detected for o in outcomes) / n,
+        "described_correctly": sum(o.described_correctly for o in outcomes) / n,
+        "severity_routed_correctly": sum(o.severity_routed_correctly for o in outcomes) / n,
+        "evidence_sealed": sum(o.evidence_sealed for o in outcomes) / n,
+        "latency_ok": sum(o.latency_ok for o in outcomes) / n,
+    }
+    composite = sum(stage_rates[k] * w[k] for k in w)
+    # fully-successful events: cleared every stage
+    fully_ok = sum(
+        all([o.detected, o.described_correctly, o.severity_routed_correctly, o.evidence_sealed, o.latency_ok])
+        for o in outcomes
+    ) / n
+
+    out = {f"{k}_rate": round(v, 4) for k, v in stage_rates.items()}
+    out["fully_successful_rate"] = round(fully_ok, 4)
+    out["system_score"] = round(composite, 4)
+    return out
