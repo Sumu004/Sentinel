@@ -46,6 +46,14 @@ to the (already-benchmarked) RF-DETR. Kept side by side so the swap is mechanica
 
 **Rejected:** YOLO-NAS — project effectively unmaintained after the NVIDIA acquisition.
 
+**Confirmed working (Phase 2.1 scaffold, this session):** both trained successfully
+on real synthetic smoke tests — see [training/README.md](training/README.md).
+`pip install rfdetr` is enough to *use* a model, but **training needs the
+`[train,loggers]` extra** (`pip install "rfdetr[train,loggers]"`) or `model.train()`
+fails with an unhelpful `ModuleNotFoundError: pytorch_lightning` — worth knowing
+before anyone hits it cold. RF-DETR's pretrained checkpoint is a real 355MB
+one-time download (free, cached locally). `ultralytics>=8.4` ships YOLO12 natively.
+
 ---
 
 ## D2 — Pose / fall detection: **RTMPose at the edge, ViTPose for max accuracy**

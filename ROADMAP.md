@@ -72,19 +72,31 @@ and event debouncing.
 
 ---
 
-## Phase 2.1 — Perception core (L1)
+## Phase 2.1 — Perception core (L1) — scaffold delivered, training not yet run
 
 **Goal:** the model stack and training pipeline.
 
-- `training/` — data config, fine-tune script, eval with a **false-alarms-per-
-  camera-per-day** metric (not just mAP), ONNX/TensorRT export.
-- Fine-tune YOLO11 (or RF-DETR) on bootstrap public datasets + domain footage.
-- Add YOLO11-pose for fall detection (keypoint-geometry rule/classifier).
-- Quantize (INT8) for the chosen edge target.
-- Hard-negative mining + night/IR data to drive down false alarms.
+- [x] `training/` — scope doc, dataset plan (remote-home pilot: person, vehicle,
+  package, animal-as-suppression-class), data downloader (Roboflow), fine-tune
+  scripts for **both** D1 bake-off candidates (RF-DETR and YOLO12), and an eval
+  script with a real, runnable **false-alarms-per-camera-per-day** metric (not
+  just mAP) — see [training/README.md](training/README.md).
+- [x] Both training scripts confirmed working this session: real pretrained-
+  checkpoint downloads, real training loops, real metrics — on tiny synthetic
+  smoke-test data. Found and documented a real gotcha: `rfdetr` needs the
+  `[train,loggers]` extra to train, not just the base install.
+- [x] False-alarm eval confirmed working against the Phase 2.0 motion detector
+  and static (event-free) footage — correctly returned 0.
+- [ ] **Not yet done — the actual Phase 2.1 work:** download a real dataset,
+  train on real data (needs a free Colab/Kaggle GPU per DECISIONS.md D8, not
+  just CPU smoke tests), run the real bake-off, quantize the winner (ONNX/
+  TensorRT) for the chosen edge target (D5).
+- [ ] RTMPose for fall detection (D2) — not started.
+- [ ] Hard-negative mining + night/IR data — needs real pilot footage first.
 
 **Deliverable:** a fine-tuned, quantized model running real-time on the edge box,
-with reproducible training and an honest FP metric.
+with reproducible training and an honest FP metric measured against real footage
+— not yet reached; this phase has the tooling, not the trained model.
 
 ---
 

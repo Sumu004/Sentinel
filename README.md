@@ -109,4 +109,18 @@ Run the tests (no camera or GPU required):
 python -m pytest tests/ -v
 ```
 
-See [ROADMAP.md](ROADMAP.md) for what Phase 2.1+ adds on top of this.
+## Phase 2.1 — perception core (scaffolded, training not yet run)
+
+`training/` has fine-tune scripts for both D1 bake-off candidates (RF-DETR,
+YOLO12), a dataset plan for the remote-home pilot, and a real
+false-alarms-per-camera-per-day eval — see
+[training/README.md](training/README.md) for the full scope and what's been
+verified to actually run.
+
+```bash
+pip install -r training/requirements-training.txt
+python -m training.train_yolo12 --data <data.yaml> --model yolo12s.yaml --output-dir ./data/models/yolo12
+python -m training.train_rfdetr --dataset-dir <coco-dir> --output-dir ./data/models/rfdetr
+```
+
+See [ROADMAP.md](ROADMAP.md) for the full phase breakdown.

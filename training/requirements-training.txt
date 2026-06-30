@@ -1,0 +1,6 @@
+# Heavier than requirements.txt — only needed once Phase 2.1 work starts.
+# Both confirmed to install and run cleanly (see training/README.md).
+
+rfdetr[train,loggers]
+ultralytics>=8.4
+roboflow>=1.1  # for prepare_data.py — free Roboflow account, set ROBOFLOW_API_KEY
