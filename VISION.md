@@ -61,16 +61,17 @@ control room:
 
 Not one model — a stack, each tuned to one job:
 
-- **Detection** — fine-tuned **RF-DETR (Apache-2.0)** by default; YOLO11 only under a
-  purchased enterprise licence (YOLO is AGPL). Closed-set, fully quantizable, low
-  false-alarm rate. Open-vocabulary models (YOLO-World) are for prototyping and as a
-  *teacher* for few-shot onboarding, not the runtime. See [DECISIONS.md](DECISIONS.md) D1.
-- **Tracking + re-identification** — ByteTrack (MIT) + OSNet (MIT). The
-  same person across cameras and across days.
-- **Pose & action recognition** — **RTMPose (Apache-2.0)** + a temporal model (SlowFast /
-  VideoMAE). Falls, climbing, fighting, tampering, concealment — *behaviour*,
-  not objects. Falls are pose-based, never a bounding-box class. (RTMPose, not
-  YOLO11-pose, which is also AGPL — see [DECISIONS.md](DECISIONS.md) D2.)
+- **Detection** — best per tier: a **RF-DETR vs YOLO12** bake-off on the chosen edge
+  box for real-time, plus a **Co-DETR/DINO-class** heavyweight for max-accuracy cloud
+  re-analysis. Closed-set, quantizable, low false-alarm rate. Open-vocabulary models
+  (YOLO-World) are for prototyping and few-shot onboarding, not the runtime.
+  See [DECISIONS.md](DECISIONS.md) D1.
+- **Tracking + re-identification** — ByteTrack + OSNet. The same person across
+  cameras and across days.
+- **Pose & action recognition** — **RTMPose** (edge real-time) + **ViTPose** (max-accuracy
+  cloud), with a temporal model (SlowFast / VideoMAE). Falls, climbing, fighting,
+  tampering, concealment — *behaviour*, not objects. Falls are pose-based, never a
+  bounding-box class. See [DECISIONS.md](DECISIONS.md) D2.
 - **Anomaly detection (unsupervised)** — catches the threats nobody labelled:
   *"this has never happened here before."* The core value for guarding the unknown.
 - **Audio event detection** — YAMNet / PANNs. Glass break, gunshot, scream.

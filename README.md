@@ -46,16 +46,19 @@ single-site pipeline) is the first buildable milestone.
 
 ## Technology choices (researched — see [DECISIONS.md](DECISIONS.md))
 
-The default shipping stack is **fully permissive** (Apache-2.0 / MIT) and depends on
-**no discontinued service**:
+Chosen on **capability first** — best model per tier, license deferred to
+commercialization. Depends on **no discontinued service**:
 
-- **Detection:** RF-DETR (Apache-2.0) — matches YOLO11x accuracy, no AGPL trap
-- **Pose/falls:** RTMPose (Apache-2.0) — not YOLO11-pose (also AGPL)
-- **Tracking / re-ID:** ByteTrack + OSNet (MIT)
-- **Reasoning VLM:** Qwen2.5-VL 3B/7B (Apache-2.0)
-- **Federated learning:** Flower (Apache-2.0)
+- **Detection:** bake-off between RF-DETR and YOLO12 on the chosen edge box; Co-DETR/DINO-class for max-accuracy cloud re-analysis
+- **Pose/falls:** RTMPose (edge real-time) + ViTPose (max-accuracy cloud)
+- **Tracking / re-ID:** ByteTrack + OSNet
+- **Reasoning VLM:** frontier API (Claude/GPT-4o-class) for top-tier reasoning; Qwen2.5-VL 3B/7B on-edge for offline/low-latency
+- **Federated learning:** Flower
 - **Edge hardware:** Jetson Orin NX 16GB reference, Orin Nano 8GB cost tier, Pi 5 + Hailo-8 entry tier
 - **Evidence:** C2PA + OpenTimestamps + S3 Object Lock (WORM) — **not** AWS QLDB (discontinued 31 Jul 2025)
+
+Permissive runner-ups (RF-DETR, Qwen2.5-VL) stay benchmarked and wired in for a
+mechanical swap if/when the project is productized.
 
 ## Still open (product-owner call)
 

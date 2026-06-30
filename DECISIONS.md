@@ -5,55 +5,60 @@ Researched recommendations for the open decisions in [VISION.md](VISION.md) and
 alternatives weighed, and — importantly — the **loophole it closes**. Sourced from
 current (2025–2026) benchmarks and vendor docs; see Sources at the end.
 
-Guiding constraint from the product owner: *use the best resource available, and
-leave no loopholes.* For a commercial product sold to industry, two loopholes
-dominate and drive most choices below:
+Guiding constraint from the product owner: **pick the best-performing technology
+available — license is secondary, release/commercialization is a later concern.**
+So every choice below is ranked on capability first. License is recorded as an
+*attribute* (it matters the day we commercialize), not a gate. The one loophole
+that still binds regardless of license posture:
 
-1. **Licensing** — an AGPL component forces open-sourcing the whole product or
-   buying a per-seat commercial licence. This must be avoided by default.
-2. **Vendor end-of-life** — building the evidence moat on a discontinued service
-   (e.g. AWS QLDB) is an existential risk.
+- **Vendor end-of-life** — building the evidence moat on a discontinued service
+  (e.g. AWS QLDB) is an existential risk no license stance can excuse. Still closed
+  in D6.
 
----
-
-## D1 — Detection model: **RF-DETR (Apache-2.0)** as default; YOLO11 only under enterprise licence
-
-**Choice:** RF-DETR is the default detector. Ship YOLO11 only if an Ultralytics
-Enterprise Licence is purchased.
-
-**Why:**
-- **Licensing is the whole point.** Ultralytics YOLO (v8/11/12) is **AGPL-3.0**.
-  Using it in a closed, commercial product means either open-sourcing all of
-  Sentinel or buying an enterprise licence — community reports put a single-developer
-  quote around **$5,000/year**, scaling with deployment. RF-DETR (Roboflow, released
-  March 2025) is **Apache-2.0** — free for commercial, closed-source use, forever.
-- **It's not a compromise on quality.** RF-DETR medium reaches **54.7 mAP@50:95**
-  on COCO — matching YOLO11x — while running real-time (RF-DETR nano ~431 FPS /
-  2.3 ms, medium ~221 FPS / 4.5 ms on a T4 with TensorRT). It's a transformer
-  detector (DETR family), so it's NMS-free, which simplifies the edge pipeline.
-
-**Alternatives weighed:**
-- *YOLO11/YOLO12* — excellent and slightly faster at the small end, but AGPL.
-  Keep as an option for research or if the enterprise licence is bought.
-- *YOLO-NAS (Deci)* — permissive-ish but the company was acquired by NVIDIA and
-  the project is effectively unmaintained. Rejected.
-
-**Loophole closed:** no AGPL contamination in the shipped product.
+> Performance-first note: where the best model is AGPL (Ultralytics YOLO) or a paid
+> API (frontier VLMs), we use it now and treat licensing as a commercialization-time
+> task — swap to the permissive runner-up only if/when we productize. Both options
+> are kept side by side so the swap is mechanical.
 
 ---
 
-## D2 — Pose / fall detection: **RTMPose (Apache-2.0)**, not YOLO11-pose
+## D1 — Detection model: **best per tier via a bake-off** — RF-DETR and YOLO12 both in
 
-**Choice:** RTMPose (from OpenMMLab / MMPose) for keypoint estimation; falls and
-other postures derived by a rule/classifier on keypoint geometry.
+**Choice:** run a measured bake-off (accuracy + latency) on the *chosen edge box*
+and ship whichever wins per tier. Lead candidates: **RF-DETR (transformer, NMS-free)**
+and **YOLO12 (attention-enhanced CNN)**. Add a heavy cloud re-scorer for max accuracy.
 
-**Why:** This is the **hidden licensing loophole** — even teams that switch the
-detector to RF-DETR often keep `YOLO11-pose`, which is *also AGPL*, re-contaminating
-the product. RTMPose is Apache-2.0, designed for real-time edge inference, and
-exports cleanly to ONNX/TensorRT. Falls must be pose-based (keypoint geometry:
-torso angle, vertical velocity, time-on-ground), never a bounding-box class.
+**Why (capability-first):**
+- The two are genuinely neck-and-neck and each wins different cases: RF-DETR
+  medium reaches **54.7 mAP@50:95** (matching YOLO11x) and runs real-time
+  (nano ~431 FPS / 2.3 ms, medium ~221 FPS / 4.5 ms on T4+TensorRT); YOLO12 clusters
+  in the mid-latency/high-accuracy region and is often faster at the small end with
+  the mature Ultralytics tooling. Picking on a benchmark beats picking on theory.
+- **Best accuracy, full stop (cloud re-analysis):** for offline forensic re-scoring
+  of flagged clips, run a heavyweight detector (e.g. **Co-DETR / DINO**-class, which
+  top the COCO leaderboard) where latency doesn't matter. Edge stays real-time;
+  cloud gets the last few points of recall.
+- RF-DETR being NMS-free still simplifies the edge pipeline — a tiebreaker, not a gate.
 
-**Loophole closed:** the pose path is permissive too — not just the detector.
+**License note (secondary):** YOLO12 is AGPL-3.0, RF-DETR is Apache-2.0. Irrelevant
+now; at commercialization either buy the Ultralytics enterprise licence or fall back
+to the (already-benchmarked) RF-DETR. Kept side by side so the swap is mechanical.
+
+**Rejected:** YOLO-NAS — project effectively unmaintained after the NVIDIA acquisition.
+
+---
+
+## D2 — Pose / fall detection: **RTMPose at the edge, ViTPose for max accuracy**
+
+**Choice:** **RTMPose** (OpenMMLab) as the real-time edge pose model; **ViTPose**
+for the highest-accuracy cloud re-analysis of flagged events. Falls derived from
+keypoint geometry (torso angle, vertical velocity, time-on-ground), never a class.
+
+**Why (capability-first):** RTMPose has the best accuracy/latency trade-off for
+real-time edge keypoints and exports cleanly to ONNX/TensorRT. ViTPose is the
+accuracy ceiling for offline verification where latency is free. (Both happen to
+be Apache-2.0; YOLO11-pose is the AGPL alternative and is the weaker choice on
+merit anyway, so license doesn't even enter into it here.)
 
 ---
 
@@ -71,21 +76,23 @@ to a local hub. This keeps the per-camera box cheap.
 
 ---
 
-## D4 — Reasoning VLM (L2): **Qwen2.5-VL (Apache-2.0)** — 3B at edge, 7B in cloud
+## D4 — Reasoning VLM (L2): **frontier API for best reasoning, Qwen2.5-VL on-edge**
 
-**Choice:** Qwen2.5-VL-3B for on-hub event interpretation; Qwen2.5-VL-7B in the
-cloud for richer reasoning and natural-language queries. Evaluate SmolVLM /
-Moondream for the smallest boxes.
+**Choice:** use a **frontier hosted VLM (Claude / GPT-4o-class)** for the cloud
+reasoning + natural-language-query tier where quality is paramount; run
+**Qwen2.5-VL-3B/7B** on the site hub for low-latency, offline-capable interpretation.
+SmolVLM / Moondream for the smallest boxes.
 
-**Why:** Qwen2.5-VL (3B/7B/72B) is Apache-2.0, has strong chain-of-thought and
-video-understanding ability, and the 3B fits an Orin-class device. SmolVLM and
-Moondream are the efficiency-first fallbacks for constrained hardware. VLMs are
-also the emerging engine for training-free anomaly detection (D3), so this model
-does double duty.
+**Why (capability-first):** for the "understands the place" layer, a frontier model
+gives the best situational reasoning and clean natural-language alerts/queries —
+worth the per-call cost for the moments that matter. Qwen2.5-VL (Apache-2.0, strong
+CoT + video understanding) handles the edge tier so the system still works offline
+and isn't paying an API for every quiet frame. VLMs also power training-free anomaly
+detection (D3), so the edge model does double duty.
 
-**Loophole closed:** the reasoning layer is permissive and self-hostable — no
-per-call dependency on a closed API for the core decision path (a cloud API like
-Claude can still be an optional premium tier, but the product works without it).
+**Architecture note:** keep the edge VLM as the always-on path and the frontier API
+as an escalation tier (called only on high-severity / ambiguous events). Best
+reasoning where it counts, no cloud dependency for basic operation.
 
 ---
 
@@ -156,12 +163,15 @@ cost is communication overhead and a learning curve beyond default strategies.
 
 ---
 
-## Net licence posture
+## Net posture (performance-first)
 
-Every component in the **default shipping configuration is permissive**
-(Apache-2.0 / MIT): RF-DETR, RTMPose, ByteTrack, OSNet, Qwen2.5-VL, Flower. The
-only AGPL options (YOLO11/12) are opt-in behind a purchased enterprise licence.
-The evidence chain depends on **no discontinued or single-vendor-locked service**.
+The stack is chosen on **capability per tier**: best edge real-time model + best
+heavyweight model for offline re-analysis, with a frontier VLM for top-tier
+reasoning. License is recorded per component but does not gate any choice now —
+where the best option is AGPL (YOLO12) or a paid API (frontier VLM), we use it and
+keep the benchmarked permissive runner-up (RF-DETR, Qwen2.5-VL) wired in for a
+mechanical swap if/when we commercialize. The only hard constraint that survives is
+**no discontinued/dead-end service** in the evidence chain (D6).
 
 ## Decisions still genuinely open (need product-owner input)
 
@@ -170,8 +180,9 @@ The evidence chain depends on **no discontinued or single-vendor-locked service*
   buyer, fastest pilot).
 - **Public-chain anchoring allowed?** Fine for commercial/insurance; for
   defence/air-gapped clients swap OpenTimestamps for a self-hosted ImmuDB/ScalarDL.
-- **Enterprise YOLO licence** — only worth buying if a measured accuracy/latency
-  gap on the *chosen edge box* justifies it over RF-DETR. Default: don't.
+- **Commercialization-time licensing** — deferred. When/if we productize, revisit
+  the AGPL components (YOLO12) and paid APIs (frontier VLM); the permissive
+  alternatives are already benchmarked and wired in.
 
 ## Sources
 
