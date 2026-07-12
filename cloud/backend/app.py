@@ -19,18 +19,23 @@ SENTINEL_API_TOKEN is set.
 
 from __future__ import annotations
 
+import asyncio
+import json
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, HTTPException, Header, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 
 from cloud.backend.db import EventRecord, make_store
+from cloud.backend.notifications import NotificationEngine, NotificationPayload
 from cloud.backend.schemas import EventIn, EventOut
 from cloud.backend.vision import detect_and_annotate
 from config import settings
 
 app = FastAPI(title="Sentinel local backend")
 _store = make_store()
+_notifier = NotificationEngine()
+_subscribers: list[asyncio.Queue] = []
 _INDEX_HTML = (Path(__file__).parent / "static" / "index.html").read_text()
 
 
@@ -69,12 +74,49 @@ async def detect(file: UploadFile = File(...), conf: float = 0.4) -> dict:
 def create_event(event: EventIn) -> EventOut:
     record = EventRecord(**event.model_dump())
     _store.save(record)
-    return EventOut(**event.model_dump(), assigned=False)
+    out = EventOut(**event.model_dump(), assigned=False)
+
+    _notifier.notify(
+        NotificationPayload(
+            event_id=event.event_id,
+            site_id=event.site_id,
+            label=event.label,
+            severity=event.severity or "medium",
+            description=event.description or f"{event.label} detected at {event.site_id}",
+        )
+    )
+
+    # Fan out to every connected SSE subscriber (Phase 2.5 — replaces the
+    # 10s-polling pattern the original MVP's Control Station used).
+    for queue in _subscribers:
+        queue.put_nowait(out.model_dump())
+
+    return out
 
 
 @app.get("/events", response_model=list[EventOut])
-def list_events(limit: int = 100) -> list[EventOut]:
-    return [EventOut(**vars(r)) for r in _store.list_recent(limit=limit)]
+def list_events(limit: int = 100, org_id: str | None = None) -> list[EventOut]:
+    return [EventOut(**vars(r)) for r in _store.list_recent(limit=limit, org_id=org_id)]
+
+
+@app.get("/events/stream")
+async def stream_events():
+    """Server-Sent Events — a connected client gets pushed new events as they
+    happen, instead of polling. Replaces the original MVP's
+    `apscheduler`-driven 10-second poll against a placeholder URL.
+    """
+
+    async def event_generator():
+        queue: asyncio.Queue = asyncio.Queue()
+        _subscribers.append(queue)
+        try:
+            while True:
+                event_data = await queue.get()
+                yield f"data: {json.dumps(event_data)}\n\n"
+        finally:
+            _subscribers.remove(queue)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.post("/events/{event_id}/assign", dependencies=[Depends(require_token)])

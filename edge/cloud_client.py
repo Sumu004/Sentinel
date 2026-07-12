@@ -55,6 +55,8 @@ def send_event(event: Event) -> bool:
         "track_id": event.track_id,
         "started_at": event.started_at,
         "detected_at": event.detected_at,
+        "description": event.description,
+        "severity": event.severity,
     }
     return send_payload(payload)
 

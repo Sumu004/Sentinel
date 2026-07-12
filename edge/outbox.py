@@ -58,6 +58,8 @@ class Outbox:
                 "track_id": event.track_id,
                 "started_at": event.started_at,
                 "detected_at": event.detected_at,
+                "description": event.description,
+                "severity": event.severity,
             }
         )
         with self._connect() as conn:

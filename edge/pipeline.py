@@ -13,6 +13,7 @@ this site is alive — see cloud/backend/app.py's /heartbeat and /sites/status.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import time
 
@@ -29,6 +30,8 @@ from edge.tracker import CentroidTracker
 from evidence.custody import CustodyLog
 from evidence.ipfs_client import IPFSError, add_to_ipfs
 from evidence.signing import sign_clip
+from reasoning.context import ContextEngine
+from reasoning.describe import make_describer
 
 logger = logging.getLogger(__name__)
 _custody_log: CustodyLog | None = None
@@ -48,20 +51,23 @@ def run(show_preview: bool = False) -> None:
     tracker = CentroidTracker()
     recorder = RingBufferRecorder()
     outbox = Outbox()
+    context = ContextEngine()  # no schedule rules configured by default — nothing suppressed
+    describer = make_describer()
 
     last_retry = 0.0
     last_heartbeat = 0.0
 
     logger.info(
-        "Sentinel edge pipeline starting — site=%s source=%s detector=%s",
+        "Sentinel edge pipeline starting — site=%s source=%s detector=%s vlm_backend=%s",
         settings.site_id,
         settings.source_kind,
         settings.detector_backend,
+        settings.vlm_backend,
     )
 
     try:
         for frame in source.frames():
-            _process_frame(frame, detector, tracker, recorder, outbox, show_preview)
+            _process_frame(frame, detector, tracker, recorder, outbox, context, describer, show_preview)
 
             now = time.time()
             if now - last_retry >= settings.outbox_retry_interval_s:
@@ -88,6 +94,8 @@ def _process_frame(
     tracker: CentroidTracker,
     recorder: RingBufferRecorder,
     outbox: Outbox,
+    context: ContextEngine,
+    describer,
     show_preview: bool,
 ) -> None:
     detections = detector.detect(frame)
@@ -97,9 +105,19 @@ def _process_frame(
     recorder.push_frame(frame)
 
     for event in new_events:
-        logger.info("Event %s: %s tracked for %.1fs+", event.event_id, event.label, settings.event_min_duration_s)
+        suppressed, reason = context.should_suppress(event.label)
+        description = describer.describe(event.label, settings.event_min_duration_s, context_reason=reason)
+
+        if suppressed:
+            logger.info("Event %s suppressed by context engine: %s", event.event_id, reason)
+            continue  # expected occurrence (e.g. scheduled visitor) — not evidence-worthy
+
+        logger.info(
+            "Event %s: %s (severity=%s) — %s", event.event_id, event.label, description.severity, description.text
+        )
         recorder.trigger(event.label)
-        send_event_or_queue(event, outbox)
+        described_event = dataclasses.replace(event, description=description.text, severity=description.severity)
+        send_event_or_queue(described_event, outbox)
 
     finished_clip = recorder.pop_finished_clip()
     if finished_clip is not None:

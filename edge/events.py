@@ -23,6 +23,10 @@ class Event:
     track_id: int
     started_at: str
     detected_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    # Populated by the reasoning layer (reasoning/describe.py) before sending —
+    # None here just means "not described yet", not "no description exists".
+    description: str | None = None
+    severity: str | None = None
 
 
 def debounce(tracks: list[Track]) -> list[Event]:

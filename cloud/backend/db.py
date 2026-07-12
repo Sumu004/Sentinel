@@ -30,6 +30,9 @@ class EventRecord:
     started_at: str
     detected_at: str
     assigned: bool = False
+    org_id: str = "default"
+    description: str | None = None
+    severity: str | None = None
 
 
 class EventStore(Protocol):
@@ -62,11 +65,15 @@ class SQLiteStore:
                     track_id INTEGER NOT NULL,
                     started_at TEXT NOT NULL,
                     detected_at TEXT NOT NULL,
-                    assigned INTEGER NOT NULL DEFAULT 0
+                    assigned INTEGER NOT NULL DEFAULT 0,
+                    org_id TEXT NOT NULL DEFAULT 'default',
+                    description TEXT,
+                    severity TEXT
                 )
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_events_detected_at ON events(detected_at)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_events_org_id ON events(org_id)")
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS heartbeats (
@@ -112,8 +119,8 @@ class SQLiteStore:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO events
-                    (event_id, site_id, label, track_id, started_at, detected_at, assigned)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                    (event_id, site_id, label, track_id, started_at, detected_at, assigned, org_id, description, severity)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     event.event_id,
@@ -123,14 +130,22 @@ class SQLiteStore:
                     event.started_at,
                     event.detected_at,
                     int(event.assigned),
+                    event.org_id,
+                    event.description,
+                    event.severity,
                 ),
             )
 
-    def list_recent(self, limit: int = 100) -> list[EventRecord]:
+    def list_recent(self, limit: int = 100, org_id: str | None = None) -> list[EventRecord]:
         with self._connect() as conn:
-            rows = conn.execute(
-                "SELECT * FROM events ORDER BY detected_at DESC LIMIT ?", (limit,)
-            ).fetchall()
+            if org_id:
+                rows = conn.execute(
+                    "SELECT * FROM events WHERE org_id = ? ORDER BY detected_at DESC LIMIT ?", (org_id, limit)
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM events ORDER BY detected_at DESC LIMIT ?", (limit,)
+                ).fetchall()
         return [
             EventRecord(
                 event_id=r["event_id"],
@@ -140,6 +155,9 @@ class SQLiteStore:
                 started_at=r["started_at"],
                 detected_at=r["detected_at"],
                 assigned=bool(r["assigned"]),
+                org_id=r["org_id"],
+                description=r["description"],
+                severity=r["severity"],
             )
             for r in rows
         ]
