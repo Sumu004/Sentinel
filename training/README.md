@@ -199,11 +199,22 @@ real training needs one for real epoch counts on real dataset sizes:
   import cleanly (v0.12.1). Not yet run against a trained model — needs one to exist first.
 - Checked D-FINE's actual install path (not just its paper) before excluding it
   from the edge bake-off — confirmed no pip package, `torchrun`-based training.
-- **Not tested:** training on a real dataset (Roboflow downloads), GPU training,
-  ONNX/TensorRT export, the false-alarm metric (needs real footage), SAHI against
-  a real trained model. These are the actual Phase 2.1 work — this session
-  proved the tooling and the architecture choice are sound, not that a
-  deployable model exists yet.
+- **Real GPU fine-tune completed** — YOLO12s on Pascal VOC, Colab T4, 45 epochs,
+  backbone frozen. Final: precision 0.862, recall 0.836, mAP50 0.900,
+  mAP50-95 0.696. Clean convergence, no overfitting, `close_mosaic` tail bump
+  landed as expected. Weights: `data/models/sentinel_yolo12_voc_v1.pt` (local,
+  gitignored — regenerate via `training/colab_finetune.ipynb`).
+- **Verified against a real image, beating the pretrained baseline**: same
+  test photo as the plain-`yolo12n.pt` baseline — the fine-tuned model found a
+  4th, harder (partially-occluded, lower-confidence) person the baseline missed.
+- First Colab attempt (100 epochs, `/content/sentinel_runs`) was **lost to a
+  disconnect** — the ephemeral disk doesn't survive a runtime reset. Fixed by
+  mounting Google Drive and writing `project=` there instead; the successful
+  45-epoch run persisted correctly and was downloaded from Drive after the fact.
+- **Not yet tested:** RF-DETR on real data (the VOC path only exercises YOLO12;
+  RF-DETR needs a COCO-format dataset), ONNX/TensorRT export against real edge
+  hardware, SAHI against a real trained model, the `package` class (no dataset
+  run yet — see the dataset plan above).
 
 ## Files in this directory
 

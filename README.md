@@ -41,8 +41,11 @@ Researched technology choices (with licensing and end-of-life loopholes closed) 
 
 ## Status
 
-Early-stage. Currently seeding vision and roadmap; Phase 2.0 (runnable
-single-site pipeline) is the first buildable milestone.
+Phase 2.0 (runnable single-site pipeline) is complete and tested. Phase 2.1
+has a **real, GPU-fine-tuned detector running in the pipeline** — YOLO12s
+trained on Pascal VOC (mAP50-95 0.696), covering 3 of 4 pilot classes
+(`person`, `vehicle`, `animal`; `package` still needs its own dataset). See
+[ROADMAP.md](ROADMAP.md) Phase 2.1 for the full status and what's next.
 
 ## Cost to build right now: $0
 

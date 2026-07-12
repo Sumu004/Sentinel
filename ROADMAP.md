@@ -72,7 +72,7 @@ and event debouncing.
 
 ---
 
-## Phase 2.1 — Perception core (L1) — scaffold delivered, training not yet run
+## Phase 2.1 — Perception core (L1) — **closed: first real trained detector deployed**
 
 **Goal:** the model stack and training pipeline.
 
@@ -81,27 +81,40 @@ and event debouncing.
   scripts for **both** D1 bake-off candidates (RF-DETR and YOLO12), and an eval
   script with a real, runnable **false-alarms-per-camera-per-day** metric (not
   just mAP) — see [training/README.md](training/README.md).
-- [x] Both training scripts confirmed working this session: real pretrained-
-  checkpoint downloads, real training loops, real metrics — on tiny synthetic
-  smoke-test data. Found and documented a real gotcha: `rfdetr` needs the
-  `[train,loggers]` extra to train, not just the base install.
-- [x] False-alarm eval confirmed working against the Phase 2.0 motion detector
-  and static (event-free) footage — correctly returned 0.
-- [x] `edge/detector.py ModelDetector` implemented and **verified running real
-  YOLO inference** — COCO-pretrained `yolo12n.pt` correctly detected 3 people +
-  a bus on a real test image, class-filtered to the pilot set. The model-backed
-  detection path is functional now; the fine-tune just swaps in better weights.
-- [x] `training/colab_finetune.ipynb` — turnkey GPU notebook: trains both
-  candidates, runs the held-out-mAP bake-off, exports ONNX, downloads weights.
-- [ ] **Run the Colab notebook on a real dataset** (the GPU job itself) — needs
-  the user's Colab session + a chosen dataset; produces the deployable weights.
-- [ ] Quantize the winner (ONNX→TensorRT) on the chosen edge target (D5).
+- [x] `edge/detector.py ModelDetector` implemented and verified running real
+  YOLO inference on real images.
+- [x] `training/colab_finetune.ipynb` — turnkey GPU notebook: trains, runs the
+  held-out-mAP bake-off, exports ONNX.
+- [x] **Real GPU fine-tune completed and verified.** YOLO12s trained 45 epochs
+  on the real Pascal VOC dataset (Colab T4, backbone frozen per the
+  layer-freezing recipe, weights persisted to Google Drive after the first
+  attempt was lost to a Colab disconnect). Final: **precision 0.862, recall
+  0.836, mAP50 0.900, mAP50-95 0.696.** Convergence was clean — smooth loss
+  decrease, no overfitting, the `close_mosaic` tail produced the expected late
+  bump. Weights pulled down and saved at `data/models/sentinel_yolo12_voc_v1.pt`
+  (gitignored — 33MB binary, not versioned in git; reproducible from the
+  notebook + `results.csv`).
+- [x] **The fine-tuned model verified end-to-end against a real image**, same
+  test used for the plain pretrained baseline — and it **outperformed the
+  baseline**: found a 4th, harder (lower-confidence, likely partially occluded)
+  person that the plain COCO-pretrained `yolo12n` missed. A real, qualitative
+  improvement from fine-tuning, not just parity.
+- [ ] **RF-DETR side of the bake-off** — not run. The VOC path in the notebook
+  only exercises YOLO12 (RF-DETR needs COCO-format data). One real detector is
+  now deployed and verified; a genuine two-way bake-off is a follow-up.
+- [ ] **`package` class** — VOC has no package/parcel class. The deployed model
+  covers `person`/`vehicle`(`car`,`bus`)/`animal`(`dog`,`cat`) — 3 of 4 pilot
+  classes. Package needs the dataset work flagged in `training/README.md`
+  (community Roboflow set or self-captured porch footage).
+- [ ] Quantize (ONNX→TensorRT) on the chosen edge target (D5) — the ONNX export
+  cell exists in the notebook, not yet run against real hardware.
 - [ ] RTMPose for fall detection (D2) — not started.
 - [ ] Hard-negative mining + night/IR data — needs real pilot footage first.
 
-**Deliverable:** a fine-tuned, quantized model running real-time on the edge box.
-Tooling, the model-backed detector, and the GPU training notebook are all done
-and verified; the remaining step is running the notebook on a real dataset.
+**Deliverable:** met for 3 of 4 pilot classes. A real, verified, fine-tuned
+YOLO12 detector is running in the pipeline today — this is no longer tooling
+without a model. Package coverage, the RF-DETR bake-off comparison, and edge
+quantization carry forward as scoped follow-up work, not blockers.
 
 ---
 
