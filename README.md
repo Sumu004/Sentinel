@@ -41,11 +41,19 @@ Researched technology choices (with licensing and end-of-life loopholes closed) 
 
 ## Status
 
-Phase 2.0 (runnable single-site pipeline) is complete and tested. Phase 2.1
-has a **real, GPU-fine-tuned detector running in the pipeline** — YOLO12s
-trained on Pascal VOC (mAP50-95 0.696), covering 3 of 4 pilot classes
-(`person`, `vehicle`, `animal`; `package` still needs its own dataset). See
-[ROADMAP.md](ROADMAP.md) Phase 2.1 for the full status and what's next.
+**Phases 2.0 through 2.6 are delivered and tested — 44/44 tests passing.** A
+real, GPU-fine-tuned detector (YOLO12s, mAP50-95 0.696) runs live in a
+pipeline that also signs and Merkle-anchors evidence, survives network loss
+via a store-and-forward outbox, flags a silent camera as its own alarm,
+generates real-time descriptions with schedule-based false-alarm suppression,
+pushes events over SSE with working notifications, and has a federated
+learning path verified to generalize to new sites better than a solo model.
+
+See **[PROJECT_STATUS.md](PROJECT_STATUS.md)** for the precise line between
+what's real/tested, what's an honest stub waiting on a real infrastructure
+decision (a VLM server, a paid API key, edge hardware), and what's
+structurally gated on having an actual deployed fleet. [ROADMAP.md](ROADMAP.md)
+has the full phase-by-phase detail.
 
 ## Cost to build right now: $0
 
@@ -112,10 +120,11 @@ Run the tests (no camera or GPU required):
 python -m pytest tests/ -v
 ```
 
-## Phase 2.1 — perception core (scaffolded, training not yet run)
+## Phase 2.1 — perception core
 
 `training/` has fine-tune scripts for both D1 bake-off candidates (RF-DETR,
-YOLO12), a dataset plan for the remote-home pilot, and a real
+YOLO12), a `yolo_to_coco.py` converter that closes the RF-DETR gap on the VOC
+path, a dataset plan for the remote-home pilot, and a real
 false-alarms-per-camera-per-day eval — see
 [training/README.md](training/README.md) for the full scope and what's been
 verified to actually run.
@@ -138,6 +147,29 @@ The model-backed detector (`edge/detector.py ModelDetector`) is implemented and
 verified running real YOLO inference — a COCO-pretrained `yolo12n.pt` already
 detects `person`/`vehicle`/`animal`; the Colab fine-tune adds `package` and
 domain adaptation.
+
+## Phases 2.2–2.6 — evidence, resilience, reasoning, platform, learning
+
+All delivered and tested this session — see [PROJECT_STATUS.md](PROJECT_STATUS.md)
+for the verification performed on each:
+
+- **Evidence (2.2)** — `evidence/merkle.py` + `evidence/custody.py` +
+  `evidence/daily_anchor.py`: Merkle-anchored daily hashes (real OpenTimestamps
+  submissions), tamper-evident chain-of-custody.
+- **Edge resilience (2.3)** — `edge/outbox.py`: store-and-forward so a network
+  outage queues events instead of losing them; `/heartbeat` + `/sites/status`:
+  a silent camera is its own alarm.
+- **Reasoning (2.4)** — `reasoning/context.py` + `reasoning/describe.py`:
+  schedule-based false-alarm suppression, real event descriptions today; a
+  richer VLM tier is an honest stub pending your own GPU server or API key.
+- **Platform (2.5)** — `GET /events/stream` (SSE, replacing polling),
+  `cloud/backend/notifications.py` (pluggable alert channels), multi-tenant
+  `org_id`.
+- **Learning (2.6)** — `learning/federated_sim.py`: FedAvg proven to help a
+  brand-new site generalize better than an existing site's solo model.
+
+A light-mode test UI is also live at `/` on the backend — upload a photo, see
+the fine-tuned model's real detections drawn on it.
 
 ## Testing & scoring
 

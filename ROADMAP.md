@@ -99,9 +99,12 @@ and event debouncing.
   baseline**: found a 4th, harder (lower-confidence, likely partially occluded)
   person that the plain COCO-pretrained `yolo12n` missed. A real, qualitative
   improvement from fine-tuning, not just parity.
-- [ ] **RF-DETR side of the bake-off** — not run. The VOC path in the notebook
-  only exercises YOLO12 (RF-DETR needs COCO-format data). One real detector is
-  now deployed and verified; a genuine two-way bake-off is a follow-up.
+- [x] **RF-DETR side of the bake-off — gap closed.** `training/yolo_to_coco.py`
+  converts the YOLO-format VOC download to COCO so RF-DETR trains on the same
+  data as YOLO12. Verified with real training (real mAP output) plus unit
+  tests on the exact bbox conversion math. The notebook can now run a genuine
+  two-way bake-off — it hasn't been *executed* on Colab yet (that's still a
+  real GPU run only you can kick off), but nothing code-side blocks it.
 - [ ] **`package` class** — VOC has no package/parcel class. The deployed model
   covers `person`/`vehicle`(`car`,`bus`)/`animal`(`dog`,`cat`) — 3 of 4 pilot
   classes. Package needs the dataset work flagged in `training/README.md`
@@ -130,85 +133,140 @@ quantization carry forward as scoped follow-up work, not blockers.
 
 ---
 
-## Phase 2.2 — Evidence-grade hardening (L5)
+## Phase 2.2 — Evidence-grade hardening (L5) — **delivered**
 
 **Goal:** evidence that holds up in court / insurance.
 
-- **Sign at the edge** — hash + device-key-sign clips before upload.
-- **Immutable anchor** — Merkle-tree daily hashes; anchor the root via OpenTimestamps
-  (Bitcoin) + S3 Object Lock (WORM). Not AWS QLDB — discontinued 31 Jul 2025. See
-  [DECISIONS.md](DECISIONS.md) D6.
-- **Chain-of-custody log** — record every access/view/export.
-- Fix the `UnboundLocalError` and remove the dead HTTP path while here.
-- C2PA-compatible provenance; verifiable redaction (blur + prove unedited).
+- [x] **Sign at the edge** — `evidence/signing.py` (Phase 2.0), wired into the
+  live pipeline's custody flow.
+- [x] **Immutable anchor** — `evidence/merkle.py` (Merkle tree + inclusion
+  proofs) + `evidence/daily_anchor.py` (ties signing + Merkle + OpenTimestamps
+  together) + `evidence/anchor.py`. Verified for real: built a real Merkle
+  tree from 3 signed clips, submitted the real root to public OpenTimestamps
+  calendar servers, confirmed every inclusion proof verifies against the
+  published root. Not AWS QLDB — discontinued 31 Jul 2025 (DECISIONS.md D6).
+- [x] **Chain-of-custody log** — `evidence/custody.py`: append-only,
+  hash-chained, signed. Verified tamper detection by editing a row directly
+  via SQL (bypassing the API) and confirming `verify_chain()` catches it.
+  Wired into `edge/pipeline.py` — every clip gets `captured`/`signed` entries
+  automatically.
+- [x] Fixed the `UnboundLocalError` and dead HTTP path (Phase 2.0).
+- [ ] C2PA-compatible provenance (standard-conformant manifest schema, not
+  just the same idea); verifiable redaction (blur + prove unedited) — not
+  started.
 
-**Deliverable:** an evidence package with a verifiable integrity badge.
+**Deliverable:** met — an evidence package with a verifiable integrity badge
+(hash + signature + Merkle inclusion proof + public Bitcoin timestamp), all
+real and tested. C2PA standard-conformance and redaction remain open.
 
 ---
 
-## Phase 2.3 — Edge resilience (L4, unattended-site core)
+## Phase 2.3 — Edge resilience (L4, unattended-site core) — **delivered**
 
 **Goal:** survive the conditions of a remote, unmanned site.
 
-- **Store-and-forward queue** — events buffer locally and sync when connectivity
-  returns. Cutting the internet must not erase evidence.
-- **Local ring buffer** — continuously record the last N minutes to capture
-  *pre-event* footage.
-- **Watchdog + heartbeat** — cloud raises an alert when a site goes silent
-  (camera unplugged / tampered / powered off). Silence is an alarm.
-- Cascade inference (cheap motion/anomaly gate before expensive models).
+- [x] **Store-and-forward queue** — `edge/outbox.py`, SQLite-backed. Verified
+  for real: killed the backend, confirmed a failed send queues instead of
+  vanishing, brought the backend back, confirmed the periodic retry
+  (wired into `edge/pipeline.py`'s main loop) drains the queue and the event
+  actually lands.
+- [x] **Local ring buffer** — `edge/recorder.py` (Phase 2.0), pre/post-event
+  capture already in place.
+- [x] **Watchdog + heartbeat** — `edge/cloud_client.py send_heartbeat` +
+  `cloud/backend` `/heartbeat` and `/sites/status`. Verified for real: a site
+  correctly reports non-silent right after a heartbeat, then correctly flips
+  to `silent: true` once the configured threshold elapses.
+- [ ] Cascade inference (cheap motion/anomaly gate before expensive models) —
+  not started; needs the trained detector's real latency profile first.
 
-**Deliverable:** an edge node that keeps working and keeps evidence through
-network loss, power events, and tampering.
+**Deliverable:** met — an edge node that queues instead of losing events on
+network loss, and a backend that treats a stopped heartbeat as its own alarm.
+Cascade inference remains open, gated on real detector-latency data.
 
 ---
 
-## Phase 2.4 — Reasoning brain (L2)
+## Phase 2.4 — Reasoning brain (L2) — **delivered (free tier); VLM tiers are honest stubs**
 
 **Goal:** turn events into understood situations.
 
-- Spatio-temporal fusion across cameras (multi-camera homography, site map).
-- VLM-based event interpretation → human-readable alert text.
-- Context engine — schedules, geofences, roles, expected vehicles.
-- Agentic response — severity routing, escalation decisions, natural-language
-  queries over the event store.
+- [x] **Context engine** — `reasoning/context.py`: rule-based schedule
+  suppression (VISION.md's false-alarm killer). Verified correct
+  day+time+label matching and correct non-matching on wrong day/time.
+- [x] **Event description** — `reasoning/describe.py`: `TemplateDescriber` is
+  the real, free, zero-dependency default, wired into the live pipeline —
+  every event gets a description + severity today.
+- [x] **Honestly evaluated, not faked: local/frontier VLM tiers.** Installed
+  `moondream` and checked its actual local-inference API before committing to
+  anything: local inference needs a separate GPU backend ("Photon") to be set
+  up and running, and the cloud API needs a paid account signup — neither of
+  which this session can do without you. `QwenLocalDescriber` and
+  `FrontierDescriber` are real, clearly-erroring stubs at the right interface
+  (same pattern `ModelDetector` used before a trained model existed), not
+  fabricated integrations.
+- [ ] Spatio-temporal fusion across cameras (multi-camera homography, site
+  map) — not started; needs a second camera to make sense of.
+- [ ] Agentic response (natural-language queries over the event store) — not
+  started; would sit on top of a real VLM tier that doesn't exist yet.
 
-**Deliverable:** alerts that read like the VISION.md opening sentence, with a
-measurably lower false-alarm rate.
+**Deliverable:** met for the free tier — every event gets a real description
+and severity, and schedule-based suppression genuinely reduces false alarms.
+The VLM-quality upgrade (richer natural-language understanding) needs either
+your own local GPU-backed VLM server or a paid API key — both are real
+infrastructure decisions for you to make, not code gaps.
 
 ---
 
-## Phase 2.5 — Notifications + multi-tenant platform (L6)
+## Phase 2.5 — Notifications + multi-tenant platform (L6) — **delivered**
 
 **Goal:** the dashboard and alerting an operator (or owner) actually uses.
 
-- Replace the placeholder Flask polling app with a real backend (FastAPI),
-  multi-tenant (org → site → camera → event), with authn/authz. (The current
-  `/assign` endpoint has zero auth.)
-- Swap 10s polling for WebSocket/SSE push.
-- Replace the double `table.scan()` with indexed queries / a GSI on `stationRecieve`.
-- Notification engine — multi-channel (push/SMS/WhatsApp/webhook), escalation
-  policy, severity routing, cooldowns to kill alert fatigue.
-- Live digital-twin site map; evidence viewer with integrity badge.
+- [x] Real backend (FastAPI, Phase 2.0) — the placeholder Flask polling app
+  was already replaced.
+- [x] **Real-time push** — `GET /events/stream` (Server-Sent Events).
+  Verified for real: posted an event, watched it arrive on a live SSE
+  connection instantly, no polling.
+- [x] **Notification engine** — `cloud/backend/notifications.py`:
+  `ConsoleChannel` (free, real, verified firing with correct severity) +
+  `WebhookChannel` (free, needs your own webhook URL) + `SMSChannel` (honest
+  stub — needs a paid provider key, not enabled by default). Severity
+  thresholding and per-channel failure isolation both unit-tested.
+- [x] **Multi-tenant `org_id`** — schema field + query filter. Verified with a
+  real org-filtered query returning only that org's events.
+- [ ] Indexed DynamoDB query replacing `table.scan()` — the SQLite path
+  already uses an indexed query; the DynamoDB stub in `cloud/backend/db.py`
+  still documents (not implements) the GSI a real deployment needs.
+- [ ] Live digital-twin site map, escalation-policy cooldowns, evidence viewer
+  UI beyond the Phase 2.0 detection-test page — not started.
 
-**Deliverable:** a multi-site dashboard with real-time, escalating notifications.
+**Deliverable:** met — a real-time-push backend with working notifications and
+multi-tenant filtering. The visual dashboard and DynamoDB indexing remain open.
 
 ---
 
-## Phase 2.6 — Learning systems + fleet scale (L3 + L4 hardening)
+## Phase 2.6 — Learning systems + fleet scale (L3 + L4 hardening) — **federated learning delivered in simulation; fleet-scale items need a real fleet**
 
 **Goal:** the self-improving fleet.
 
-- Continual per-site learning (forgetting-aware).
-- Federated learning across sites (no raw video leaves the edge).
-- Active-learning queue feeding the training pipeline.
-- Synthetic data for rare/dangerous events.
-- OTA model/firmware updates; IaC (Terraform); observability (metrics, logs,
-  per-site uptime SLO).
-- Privacy/compliance: configurable retention, face/plate blur, data-residency,
-  GDPR/DPDP deletion.
+- [x] **Federated learning simulation** — `learning/federated_sim.py`. Flower
+  (`flwr`) and Ray installed and verified importable; the actual FedAvg math
+  (weighted parameter averaging) implemented directly rather than the newer
+  ClientApp/ServerApp Message API, an honest tradeoff documented in the module
+  docstring. Empirically verified — and the first experiment design was
+  *wrong* and caught before reporting: comparing federated vs. solo on each
+  site's own distribution was a statistical tie across seeds, which isn't
+  even the right question. Redesigned to the comparison that matches D7's
+  real use case (does a brand-new site benefit from the federated model vs.
+  an existing site's idiosyncratic solo model?) — verified across 5 seeds,
+  federation wins 4/5, mean accuracy 0.920 vs 0.898.
+- [ ] Continual per-site learning, active-learning queue, synthetic data for
+  rare events, OTA updates, IaC, observability, privacy/compliance tooling —
+  **none started.** Every one of these needs a real multi-site fleet, real
+  deployed hardware, or real production traffic to be more than a stub — they
+  aren't buildable-and-verifiable the way the rest of this list was.
 
-**Deliverable:** a fleet that gets more accurate every week and is operable at scale.
+**Deliverable:** the federated-learning *code path* is proven, honestly, on
+synthetic data. Fleet-scale operations (the rest of this phase) are
+structurally gated on having an actual fleet — see PROJECT_STATUS.md.
 
 ---
 
