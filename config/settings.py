@@ -47,10 +47,17 @@ class Settings:
     event_min_duration_s: float = field(default_factory=lambda: float(os.getenv("SENTINEL_EVENT_MIN_DURATION_S", "3")))
     track_max_age_frames: int = field(default_factory=lambda: int(os.getenv("SENTINEL_TRACK_MAX_AGE_FRAMES", "15")))
 
-    # --- clip recording (a minimal Phase 2.0 version of the Phase 2.3 ring buffer) ---
+    # --- clip recording ---
     capture_fps: int = field(default_factory=lambda: int(os.getenv("SENTINEL_CAPTURE_FPS", "15")))
     pre_event_seconds: float = field(default_factory=lambda: float(os.getenv("SENTINEL_PRE_EVENT_SECONDS", "3")))
     post_event_seconds: float = field(default_factory=lambda: float(os.getenv("SENTINEL_POST_EVENT_SECONDS", "5")))
+
+    # --- edge resilience (Phase 2.3) ---
+    outbox_retry_interval_s: float = field(default_factory=lambda: float(os.getenv("SENTINEL_OUTBOX_RETRY_INTERVAL_S", "15")))
+    heartbeat_interval_s: float = field(default_factory=lambda: float(os.getenv("SENTINEL_HEARTBEAT_INTERVAL_S", "30")))
+    heartbeat_silent_threshold_s: float = field(
+        default_factory=lambda: float(os.getenv("SENTINEL_HEARTBEAT_SILENT_THRESHOLD_S", "90"))
+    )
 
     # --- storage paths (local, free) ---
     data_dir: Path = field(default_factory=lambda: Path(os.getenv("SENTINEL_DATA_DIR", "./data")))

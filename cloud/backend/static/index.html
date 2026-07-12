@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel — detection test</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f7f7f8;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 2.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { font-size: 1.4rem; font-weight: 600; margin: 0 0 0.25rem; }
+  p.sub { color: #666; margin: 0 0 1.5rem; font-size: 0.95rem; }
+  .card {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 640px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  #dropzone {
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: #888;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    font-size: 0.95rem;
+  }
+  #dropzone.dragover { border-color: #4a90d9; background: #f0f6fc; }
+  #fileInput { display: none; }
+  #preview { margin-top: 1rem; text-align: center; }
+  #preview img { max-width: 100%; border-radius: 8px; display: block; margin: 0 auto; }
+  #detections { margin-top: 1rem; font-size: 0.9rem; }
+  .det-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.45rem 0.1rem;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .det-label { font-weight: 600; text-transform: capitalize; }
+  .det-conf { color: #888; }
+  #status { margin-top: 0.75rem; font-size: 0.85rem; color: #888; min-height: 1.2em; }
+  button {
+    margin-top: 1rem;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.3rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.4; cursor: default; }
+  .confRow { display: flex; align-items: center; gap: 0.6rem; margin-top: 1rem; font-size: 0.85rem; color: #555; }
+  .confRow input[type=range] { flex: 1; }
+</style>
+</head>
+<body>
+  <h1>Sentinel detection test</h1>
+  <p class="sub">Upload a photo — the fine-tuned model runs and draws its detections.</p>
+  <div class="card">
+    <div id="dropzone">Click or drag an image here</div>
+    <input type="file" id="fileInput" accept="image/*">
+
+    <div class="confRow">
+      <label for="confSlider">Confidence</label>
+      <input type="range" id="confSlider" min="0.05" max="0.95" step="0.05" value="0.4">
+      <span id="confVal">0.40</span>
+    </div>
+
+    <button id="runBtn" disabled>Run detection</button>
+    <div id="status"></div>
+    <div id="preview"></div>
+    <div id="detections"></div>
+  </div>
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const runBtn = document.getElementById('runBtn');
+const statusEl = document.getElementById('status');
+const preview = document.getElementById('preview');
+const detections = document.getElementById('detections');
+const confSlider = document.getElementById('confSlider');
+const confVal = document.getElementById('confVal');
+let selectedFile = null;
+
+confSlider.addEventListener('input', () => { confVal.textContent = parseFloat(confSlider.value).toFixed(2); });
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+function handleFile(file) {
+  selectedFile = file;
+  runBtn.disabled = false;
+  dropzone.textContent = file.name;
+  detections.innerHTML = '';
+  preview.innerHTML = '';
+  statusEl.textContent = '';
+}
+
+runBtn.addEventListener('click', async () => {
+  if (!selectedFile) return;
+  runBtn.disabled = true;
+  statusEl.textContent = 'Running detection…';
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  try {
+    const res = await fetch(`/detect?conf=${confSlider.value}`, { method: 'POST', body: formData });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Request failed (${res.status})`);
+    }
+    const data = await res.json();
+    preview.innerHTML = `<img src="data:image/jpeg;base64,${data.image_base64}" alt="annotated result">`;
+    if (data.detections.length === 0) {
+      detections.innerHTML = '<p style="color:#888">No detections above the confidence threshold.</p>';
+    } else {
+      detections.innerHTML = data.detections
+        .map(d => `<div class="det-row"><span class="det-label">${d.label}</span><span class="det-conf">${(d.confidence * 100).toFixed(0)}%</span></div>`)
+        .join('');
+    }
+    statusEl.textContent = `${data.detections.length} detection(s)`;
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+  } finally {
+    runBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

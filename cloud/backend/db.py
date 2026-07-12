@@ -67,6 +67,45 @@ class SQLiteStore:
                 """
             )
             conn.execute("CREATE INDEX IF NOT EXISTS idx_events_detected_at ON events(detected_at)")
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS heartbeats (
+                    site_id TEXT PRIMARY KEY,
+                    last_seen TEXT NOT NULL
+                )
+                """
+            )
+
+    def record_heartbeat(self, site_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO heartbeats (site_id, last_seen) VALUES (?, ?) "
+                "ON CONFLICT(site_id) DO UPDATE SET last_seen = excluded.last_seen",
+                (site_id, utcnow_iso()),
+            )
+
+    def site_statuses(self, silent_threshold_s: float) -> list[dict]:
+        """A site with no heartbeat within the threshold is flagged `silent` —
+        VISION.md's "silence is an alarm": camera unplugged, tampered, or
+        powered off all look identical to the backend, and all three deserve
+        the same alert.
+        """
+        now = datetime.now(timezone.utc)
+        with self._connect() as conn:
+            rows = conn.execute("SELECT * FROM heartbeats").fetchall()
+        statuses = []
+        for r in rows:
+            last_seen = datetime.fromisoformat(r["last_seen"])
+            age_s = (now - last_seen).total_seconds()
+            statuses.append(
+                {
+                    "site_id": r["site_id"],
+                    "last_seen": r["last_seen"],
+                    "seconds_since_heartbeat": round(age_s, 1),
+                    "silent": age_s > silent_threshold_s,
+                }
+            )
+        return statuses
 
     def save(self, event: EventRecord) -> None:
         with self._connect() as conn:

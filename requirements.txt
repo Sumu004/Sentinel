@@ -13,11 +13,13 @@ python-dotenv>=1.0
 # Evidence chain
 cryptography>=42.0
 requests>=2.31
+opentimestamps-client>=0.7  # real, free Bitcoin-anchored timestamping — see evidence/anchor.py
 
 # Cloud backend (local FastAPI + SQLite by default)
 fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.6
+python-multipart>=0.0.9  # required for the /detect image-upload endpoint
 
 # Optional: only imported when SENTINEL_STORAGE_BACKEND=dynamodb
 boto3>=1.34
