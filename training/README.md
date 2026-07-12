@@ -211,15 +211,28 @@ real training needs one for real epoch counts on real dataset sizes:
   disconnect** — the ephemeral disk doesn't survive a runtime reset. Fixed by
   mounting Google Drive and writing `project=` there instead; the successful
   45-epoch run persisted correctly and was downloaded from Drive after the fact.
-- **Not yet tested:** RF-DETR on real data (the VOC path only exercises YOLO12;
-  RF-DETR needs a COCO-format dataset), ONNX/TensorRT export against real edge
-  hardware, SAHI against a real trained model, the `package` class (no dataset
-  run yet — see the dataset plan above).
+- **RF-DETR bake-off gap closed.** `training/yolo_to_coco.py` converts
+  Ultralytics' YOLO-format VOC download to COCO format so RF-DETR trains on
+  the *same* data as YOLO12 — previously the notebook just skipped RF-DETR on
+  the VOC path. Verified twice: unit tests assert the exact bounding-box math
+  (YOLO normalized `cx,cy,w,h` → COCO absolute `x,y,w,h`) on a synthetic
+  dataset, and a real RF-DETR training run against the converted output
+  produced real mAP (0.40 on 2 synthetic classes, both correctly recognized).
+  The notebook's copy of the converter (inlined so the notebook stays
+  self-contained without cloning the private repo) was independently
+  re-tested and produces byte-identical output to the tested module.
+- **Not yet tested:** ONNX/TensorRT export against real edge hardware, SAHI
+  against a real trained model, the `package` class (no dataset run yet — see
+  the dataset plan above), and the actual real-data RF-DETR-vs-YOLO12
+  comparison (the bake-off can now run end-to-end in the notebook; it hasn't
+  been executed on Colab yet).
 
 ## Files in this directory
 
 - `prepare_data.py` — downloads a Roboflow Universe dataset by project/version
   in both COCO and YOLO formats (the two formats the two candidates need).
+- `yolo_to_coco.py` — converts a YOLO-format dataset to COCO, closing the gap
+  that let RF-DETR skip the VOC path entirely.
 - `train_rfdetr.py`, `train_yolo12.py` — thin, config-driven wrappers around
   the confirmed-working calls above.
 - `eval.py` — held-out mAP (delegates to each library's own validator) plus the
