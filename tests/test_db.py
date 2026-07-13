@@ -1,3 +1,4 @@
+import sqlite3
 from pathlib import Path
 
 from cloud.backend.db import EventRecord, SQLiteStore
@@ -36,3 +37,39 @@ def test_sqlite_store_assign(tmp_path: Path):
     assert store.assign("e2") is True
     assert store.assign("nonexistent") is False
     assert store.list_recent()[0].assigned is True
+
+
+def test_sqlite_store_migrates_pre_existing_db_missing_new_columns(tmp_path: Path):
+    """Regression test: a DB created before org_id/description/severity were
+    added to the schema must not crash on startup — CREATE TABLE IF NOT
+    EXISTS silently no-ops on an existing table, so without an explicit
+    migration these columns never appear and the org_id index creation fails.
+    """
+    db_path = tmp_path / "legacy.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE events (
+            event_id TEXT PRIMARY KEY,
+            site_id TEXT NOT NULL,
+            label TEXT NOT NULL,
+            track_id INTEGER NOT NULL,
+            started_at TEXT NOT NULL,
+            detected_at TEXT NOT NULL,
+            assigned INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    conn.execute(
+        "INSERT INTO events VALUES ('e1','site1','person',1,'2026-01-01T00:00:00Z','2026-01-01T00:00:03Z',0)"
+    )
+    conn.commit()
+    conn.close()
+
+    store = SQLiteStore(db_path=db_path)  # must not raise
+
+    recs = store.list_recent()
+    assert len(recs) == 1
+    assert recs[0].event_id == "e1"
+    assert recs[0].org_id == "default"
+    assert recs[0].description is None

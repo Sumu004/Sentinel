@@ -72,6 +72,7 @@ class SQLiteStore:
                 )
                 """
             )
+            self._migrate_events_columns(conn)
             conn.execute("CREATE INDEX IF NOT EXISTS idx_events_detected_at ON events(detected_at)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_events_org_id ON events(org_id)")
             conn.execute(
@@ -82,6 +83,22 @@ class SQLiteStore:
                 )
                 """
             )
+
+    def _migrate_events_columns(self, conn: sqlite3.Connection) -> None:
+        """`CREATE TABLE IF NOT EXISTS` silently no-ops on a pre-existing
+        database — a DB created before org_id/description/severity were added
+        to the schema keeps its old columns forever unless we add them here.
+        Runs on every startup; each ALTER is a no-op once the column exists.
+        """
+        existing = {row["name"] for row in conn.execute("PRAGMA table_info(events)").fetchall()}
+        migrations = {
+            "org_id": "ALTER TABLE events ADD COLUMN org_id TEXT NOT NULL DEFAULT 'default'",
+            "description": "ALTER TABLE events ADD COLUMN description TEXT",
+            "severity": "ALTER TABLE events ADD COLUMN severity TEXT",
+        }
+        for column, ddl in migrations.items():
+            if column not in existing:
+                conn.execute(ddl)
 
     def record_heartbeat(self, site_id: str) -> None:
         with self._connect() as conn:
