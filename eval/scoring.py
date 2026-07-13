@@ -26,11 +26,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
-# --------------------------------------------------------------------------- #
-# 1. DETECTION rate
-# --------------------------------------------------------------------------- #
-
-Box = tuple[float, float, float, float]  # x, y, w, h
+Box = tuple[float, float, float, float]
 
 
 @dataclass(frozen=True)
@@ -140,18 +136,13 @@ def false_alarms_per_day(spurious_events: int, hours_observed: float) -> float:
     return round(spurious_events * (24.0 / hours_observed), 2)
 
 
-# --------------------------------------------------------------------------- #
-# 2. DESCRIPTION rate
-# --------------------------------------------------------------------------- #
-
-
 @dataclass(frozen=True)
 class DescriptionGT:
     """Ground truth for one event's description, labelled by a human reviewer."""
 
-    subject: str  # e.g. "person", "vehicle", "package"
-    action: str  # e.g. "loitering", "approaching", "taking"
-    severity: str  # "high" | "medium" | "low"
+    subject: str
+    action: str
+    severity: str
 
 
 @dataclass
@@ -160,7 +151,7 @@ class DescriptionResult:
     action_correct: bool
     severity_correct: bool
     hallucinated: bool
-    score: float  # 0..1, fraction of the three attributes correct, 0 if hallucinated
+    score: float
 
 
 def score_description(
@@ -205,20 +196,15 @@ def description_rate(results: list[DescriptionResult]) -> dict[str, float]:
     }
 
 
-# --------------------------------------------------------------------------- #
-# 3. SYSTEM score (end-to-end)
-# --------------------------------------------------------------------------- #
-
-
 @dataclass(frozen=True)
 class EventOutcome:
     """One real event from the live test, scored at every stage of the pipeline."""
 
-    detected: bool  # did the detector fire on the real event?
-    described_correctly: bool  # was the description right (per DescriptionResult.score >= threshold)?
-    severity_routed_correctly: bool  # did it escalate/suppress as it should have?
-    evidence_sealed: bool  # was a verifiable clip produced (evidence/signing.py)?
-    latency_ok: bool  # did the alert arrive within the latency budget?
+    detected: bool
+    described_correctly: bool
+    severity_routed_correctly: bool
+    evidence_sealed: bool
+    latency_ok: bool
 
 
 def system_score(outcomes: list[EventOutcome], weights: dict[str, float] | None = None) -> dict[str, float]:
@@ -246,7 +232,6 @@ def system_score(outcomes: list[EventOutcome], weights: dict[str, float] | None 
         "latency_ok": sum(o.latency_ok for o in outcomes) / n,
     }
     composite = sum(stage_rates[k] * w[k] for k in w)
-    # fully-successful events: cleared every stage
     fully_ok = sum(
         all([o.detected, o.described_correctly, o.severity_routed_correctly, o.evidence_sealed, o.latency_ok])
         for o in outcomes

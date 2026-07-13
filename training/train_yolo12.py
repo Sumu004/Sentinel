@@ -37,7 +37,7 @@ def train(
         batch=batch,
         device=device,
         project=str(output_dir),
-        freeze=freeze,  # None = no freezing; see training/README.md layer-freezing recipe
+        freeze=freeze,
     )
 
 

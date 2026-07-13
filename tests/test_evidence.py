@@ -24,7 +24,7 @@ def test_merkle_tree_rejects_wrong_root():
 def test_merkle_tree_single_leaf():
     leaf = hashlib.sha256(b"only-clip").hexdigest()
     tree = MerkleTree([leaf])
-    assert tree.root  # single-leaf tree still produces a root
+    assert tree.root
     proof = tree.prove(leaf)
     assert proof.verify(tree.root)
 
@@ -48,7 +48,6 @@ def test_custody_log_detects_tampering(tmp_path: Path):
     log.record("clip1.mp4", "signed")
     assert log.verify_chain()
 
-    # tamper directly via SQL, bypassing the API entirely
     conn = sqlite3.connect(db_path)
     conn.execute("UPDATE custody SET actor = 'attacker' WHERE seq = 1")
     conn.commit()

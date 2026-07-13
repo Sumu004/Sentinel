@@ -39,6 +39,33 @@ def test_sqlite_store_assign(tmp_path: Path):
     assert store.list_recent()[0].assigned is True
 
 
+def test_sqlite_store_update_description_patches_existing_event(tmp_path: Path):
+    store = SQLiteStore(db_path=tmp_path / "test.db")
+    record = EventRecord(
+        event_id="e3",
+        site_id="dev-site-01",
+        label="person",
+        track_id=1,
+        started_at="2026-01-01T00:00:00+00:00",
+        detected_at="2026-01-01T00:00:03+00:00",
+        description="Person detected and tracked for 5s (daytime).",
+        severity="medium",
+    )
+    store.save(record)
+
+    ok = store.update_description("e3", "A person in a red jacket walks past the gate.", "high")
+
+    assert ok is True
+    updated = store.list_recent()[0]
+    assert updated.description == "A person in a red jacket walks past the gate."
+    assert updated.severity == "high"
+
+
+def test_sqlite_store_update_description_returns_false_for_missing_event(tmp_path: Path):
+    store = SQLiteStore(db_path=tmp_path / "test.db")
+    assert store.update_description("nonexistent", "text", "high") is False
+
+
 def test_sqlite_store_migrates_pre_existing_db_missing_new_columns(tmp_path: Path):
     """Regression test: a DB created before org_id/description/severity were
     added to the schema must not crash on startup — CREATE TABLE IF NOT
@@ -66,7 +93,7 @@ def test_sqlite_store_migrates_pre_existing_db_missing_new_columns(tmp_path: Pat
     conn.commit()
     conn.close()
 
-    store = SQLiteStore(db_path=db_path)  # must not raise
+    store = SQLiteStore(db_path=db_path)
 
     recs = store.list_recent()
     assert len(recs) == 1

@@ -23,7 +23,7 @@ from config import settings
 class Detection:
     label: str
     confidence: float
-    box: tuple[int, int, int, int]  # x, y, w, h
+    box: tuple[int, int, int, int]
 
 
 class Detector:
@@ -79,7 +79,7 @@ class ModelDetector(Detector):
                 "to point at trained weights (a fine-tuned .pt from training/, or "
                 "yolo12n.pt to start). See training/README.md."
             )
-        from ultralytics import YOLO  # local import: heavy dep, only loaded for this backend
+        from ultralytics import YOLO
 
         self._model = YOLO(model_path)
         self._conf = conf

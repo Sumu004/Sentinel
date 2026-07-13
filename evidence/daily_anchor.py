@@ -62,14 +62,12 @@ def run_daily_anchor(day: date | None = None, custody_log: CustodyLog | None = N
             proof_path = anchor_file(root_file)
             ots_proof_path = str(proof_path)
         except AnchorError:
-            ots_proof_path = None  # anchoring is best-effort; the Merkle root itself is still valid
+            ots_proof_path = None
 
     log = custody_log or CustodyLog()
     for name in clip_names:
         log.record(name, "anchored", actor="daily_anchor_job")
 
-    # Persist the inclusion proofs alongside the root so they can be handed to
-    # anyone verifying a single clip later, without needing the whole day's set.
     proofs_file = clips_dir / f"merkle_proofs_{day.strftime('%Y%m%d')}.json"
     proofs_file.write_text(
         json.dumps({name: asdict(p) for name, p in inclusion_proofs.items()}, indent=2)

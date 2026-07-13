@@ -7,6 +7,18 @@
 opencv-python>=4.9
 numpy>=1.26
 
+# ByteTrack (DECISIONS.md D3) — supervision (Roboflow, MIT) ships a real,
+# pip-installable ByteTrack; only imported when SENTINEL_TRACKER_BACKEND=bytetrack
+supervision>=0.28
+
+# OSNet re-ID (DECISIONS.md D3) — torchreid installs cleanly but its own
+# import chain calls `import gdown` (dataset-download helpers) without
+# declaring it as a dependency; gdown must be installed alongside it or
+# `import torchreid` crashes with ModuleNotFoundError. Only used by
+# perception/reid.py's OSNetReID.
+torchreid>=0.2.5
+gdown>=5.0
+
 # Config
 python-dotenv>=1.0
 
@@ -19,7 +31,6 @@ opentimestamps-client>=0.7  # real, free Bitcoin-anchored timestamping — see e
 fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.6
-python-multipart>=0.0.9  # required for the /detect image-upload endpoint
 
 # Optional: only imported when SENTINEL_STORAGE_BACKEND=dynamodb
 boto3>=1.34

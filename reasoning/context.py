@@ -37,7 +37,7 @@ class ScheduleRule:
         current = when.time()
         if self.start <= self.end:
             return self.start <= current <= self.end
-        return current >= self.start or current <= self.end  # window crosses midnight
+        return current >= self.start or current <= self.end
 
 
 @dataclass

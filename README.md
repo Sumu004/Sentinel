@@ -41,13 +41,16 @@ Researched technology choices (with licensing and end-of-life loopholes closed) 
 
 ## Status
 
-**Phases 2.0 through 2.6 are delivered and tested — 44/44 tests passing.** A
+**Phases 2.0 through 2.6 are delivered and tested — 95/95 tests passing.** A
 real, GPU-fine-tuned detector (YOLO12s, mAP50-95 0.696) runs live in a
 pipeline that also signs and Merkle-anchors evidence, survives network loss
 via a store-and-forward outbox, flags a silent camera as its own alarm,
 generates real-time descriptions with schedule-based false-alarm suppression,
 pushes events over SSE with working notifications, and has a federated
 learning path verified to generalize to new sites better than a solo model.
+The rest of L1's model fleet (`perception/`) — fall detection, re-ID, anomaly,
+audio, fire/smoke — now has real, free, tested implementations too, each with
+a documented upgrade path to the heavier DECISIONS.md-chosen model.
 
 See **[PROJECT_STATUS.md](PROJECT_STATUS.md)** for the precise line between
 what's real/tested, what's an honest stub waiting on a real infrastructure
@@ -160,16 +163,31 @@ for the verification performed on each:
   outage queues events instead of losing them; `/heartbeat` + `/sites/status`:
   a silent camera is its own alarm.
 - **Reasoning (2.4)** — `reasoning/context.py` + `reasoning/describe.py`:
-  schedule-based false-alarm suppression, real event descriptions today; a
-  richer VLM tier is an honest stub pending your own GPU server or API key.
+  schedule-based false-alarm suppression; real event descriptions via both a
+  free template tier and a real local Qwen2.5-VL tier (Ollama), verified
+  producing genuine scene descriptions from a real image; a paid frontier VLM
+  tier remains an honest stub pending an API key. `edge/description_worker.py`
+  keeps the ~11s VLM call off the real-time frame loop — alerts fire
+  instantly on the template description, then get enriched asynchronously.
 - **Platform (2.5)** — `GET /events/stream` (SSE, replacing polling),
   `cloud/backend/notifications.py` (pluggable alert channels), multi-tenant
   `org_id`.
 - **Learning (2.6)** — `learning/federated_sim.py`: FedAvg proven to help a
   brand-new site generalize better than an existing site's solo model.
 
-A light-mode test UI is also live at `/` on the backend — upload a photo, see
-the fine-tuned model's real detections drawn on it.
+There is one test entry point, matching the real deployment shape: the live
+webcam pipeline (`python -m edge.main`) against the local backend — see the
+Quickstart above. A single live dashboard at `/` (`cloud/backend/static/dashboard.html`)
+ties everything together in one page: a **live annotated tracking view**
+(real detection boxes streamed from the actual pipeline via
+`edge/live_frame_streamer.py` + `GET /live-frame/stream`, MJPEG), a raw
+browser webcam preview (visual only, not the detection source), the
+real-time event feed with descriptions/severity over SSE, and a raw event
+log. Verified end-to-end in a real browser: a posted event and a
+description-enrichment PATCH both appeared live with no refresh, and a
+pushed annotated frame rendered and moved correctly in the tracking panel.
+The earlier standalone image-upload test UI was removed in favor of this
+single path.
 
 ## Testing & scoring
 

@@ -26,7 +26,6 @@ def test_detection_perfect_match():
 
 
 def test_detection_false_positive_and_negative():
-    # one correct, one spurious pred, one missed gt
     preds = [PredBox("person", 0.9, (0, 0, 10, 10)), PredBox("person", 0.8, (200, 200, 10, 10))]
     gts = [GTBox("person", (0, 0, 10, 10)), GTBox("person", (50, 50, 10, 10))]
     s = score_detections(preds, gts)
@@ -45,7 +44,6 @@ def test_detection_wrong_class_is_not_a_match():
 
 
 def test_false_alarms_per_day():
-    # 2 spurious events over 4 hours -> 12 per day
     assert false_alarms_per_day(2, 4) == 12.0
 
 
@@ -68,7 +66,7 @@ def test_description_rate_aggregate():
     gt = DescriptionGT(subject="person", action="loitering", severity="high")
     results = [
         score_description("person loitering high", gt),
-        score_description("person standing", gt),  # only subject matches
+        score_description("person standing", gt),
     ]
     agg = description_rate(results)
     assert agg["subject_acc"] == 1.0
@@ -83,7 +81,6 @@ def test_system_score_all_pass():
 
 
 def test_system_score_partial():
-    # detection works, but descriptions fail everywhere
     outcomes = [
         EventOutcome(True, False, True, True, True),
         EventOutcome(True, False, True, True, True),

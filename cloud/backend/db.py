@@ -184,6 +184,20 @@ class SQLiteStore:
             cur = conn.execute("UPDATE events SET assigned = 1 WHERE event_id = ?", (event_id,))
             return cur.rowcount > 0
 
+    def update_description(self, event_id: str, description: str, severity: str) -> bool:
+        """Backs the async enrichment path (edge/description_worker.py): an
+        event is created immediately with a fast template description so
+        alerting stays real-time, then a slower VLM description (seconds,
+        not milliseconds) arrives later and patches this same row instead of
+        blocking the frame loop.
+        """
+        with self._connect() as conn:
+            cur = conn.execute(
+                "UPDATE events SET description = ?, severity = ? WHERE event_id = ?",
+                (description, severity, event_id),
+            )
+            return cur.rowcount > 0
+
 
 class DynamoDBStore:
     """Phase-2.5 target. Lambda + DynamoDB are always-free at dev scale (D8) —
@@ -194,7 +208,7 @@ class DynamoDBStore:
     """
 
     def __init__(self, table_name: str | None = None, region: str | None = None):
-        import boto3  # local import: boto3 stays optional for local-only dev
+        import boto3
 
         self._table = boto3.resource("dynamodb", region_name=region or settings.dynamodb_region).Table(
             table_name or settings.dynamodb_table
@@ -214,8 +228,6 @@ class DynamoDBStore:
         )
 
     def list_recent(self, limit: int = 100) -> list[EventRecord]:
-        # Real deployment: query the assigned-GSI sorted by detected_at instead
-        # of a scan. Left as a query stub since it needs the GSI provisioned.
         response = self._table.scan(Limit=limit)
         items = sorted(response.get("Items", []), key=lambda i: i["detected_at"], reverse=True)
         return [EventRecord(**item) for item in items]

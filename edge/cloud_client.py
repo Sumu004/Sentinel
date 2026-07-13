@@ -72,6 +72,26 @@ def send_event_or_queue(event: Event, outbox: Outbox) -> bool:
     return False
 
 
+def send_description_update(event_id: str, description: str, severity: str) -> bool:
+    """PATCHes a richer description onto an already-sent event. Used by
+    edge/description_worker.py once a slow VLM call finishes — the event
+    itself was already sent immediately with a fast template description so
+    alerting isn't blocked on this.
+    """
+    try:
+        response = requests.patch(
+            f"{_base_url()}/events/{event_id}/description",
+            json={"description": description, "severity": severity},
+            headers=_headers(),
+            timeout=5,
+        )
+        response.raise_for_status()
+        return True
+    except requests.RequestException as exc:
+        logger.warning("Failed to send description update for event %s: %s", event_id, exc)
+        return False
+
+
 def send_heartbeat() -> bool:
     """Pings the backend so it knows this site is alive. A stopped heartbeat
     is itself an alarm (VISION.md "silence is an alarm") — see

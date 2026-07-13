@@ -20,18 +20,22 @@ import time
 import numpy as np
 
 from config import settings
+from edge.bytetrack_tracker import make_tracker
 from edge.cloud_client import send_event_or_queue, send_heartbeat, send_payload
+from edge.description_worker import DescriptionWorker
 from edge.detector import make_detector
 from edge.events import debounce
+from edge.live_frame_streamer import LiveFrameStreamer
 from edge.outbox import Outbox, retry_pending
 from edge.recorder import RingBufferRecorder
 from edge.source import make_source
-from edge.tracker import CentroidTracker
 from evidence.custody import CustodyLog
 from evidence.ipfs_client import IPFSError, add_to_ipfs
 from evidence.signing import sign_clip
 from reasoning.context import ContextEngine
-from reasoning.describe import make_describer
+from reasoning.describe import TemplateDescriber, make_describer
+
+_ASYNC_VLM_BACKENDS = {"qwen-local", "frontier"}
 
 logger = logging.getLogger(__name__)
 _custody_log: CustodyLog | None = None
@@ -48,11 +52,19 @@ def run(show_preview: bool = False) -> None:
     settings.ensure_dirs()
     source = make_source()
     detector = make_detector()
-    tracker = CentroidTracker()
+    tracker = make_tracker()
     recorder = RingBufferRecorder()
     outbox = Outbox()
-    context = ContextEngine()  # no schedule rules configured by default — nothing suppressed
-    describer = make_describer()
+    context = ContextEngine()
+
+    fast_describer = TemplateDescriber()
+    description_worker: DescriptionWorker | None = None
+    if settings.vlm_backend in _ASYNC_VLM_BACKENDS:
+        description_worker = DescriptionWorker(make_describer())
+        description_worker.start()
+
+    live_frame_streamer = LiveFrameStreamer()
+    live_frame_streamer.start()
 
     last_retry = 0.0
     last_heartbeat = 0.0
@@ -67,7 +79,18 @@ def run(show_preview: bool = False) -> None:
 
     try:
         for frame in source.frames():
-            _process_frame(frame, detector, tracker, recorder, outbox, context, describer, show_preview)
+            _process_frame(
+                frame,
+                detector,
+                tracker,
+                recorder,
+                outbox,
+                context,
+                fast_describer,
+                description_worker,
+                live_frame_streamer,
+                show_preview,
+            )
 
             now = time.time()
             if now - last_retry >= settings.outbox_retry_interval_s:
@@ -78,10 +101,17 @@ def run(show_preview: bool = False) -> None:
             if now - last_heartbeat >= settings.heartbeat_interval_s:
                 send_heartbeat()
                 last_heartbeat = now
+        else:
+            logger.warning(
+                "Video source stopped yielding frames (camera disconnected or released?) — pipeline exiting."
+            )
     except KeyboardInterrupt:
         logger.info("Stopped by user.")
     finally:
         source.release()
+        if description_worker is not None:
+            description_worker.stop()
+        live_frame_streamer.stop()
         if show_preview:
             import cv2
 
@@ -91,11 +121,13 @@ def run(show_preview: bool = False) -> None:
 def _process_frame(
     frame: np.ndarray,
     detector,
-    tracker: CentroidTracker,
+    tracker,
     recorder: RingBufferRecorder,
     outbox: Outbox,
     context: ContextEngine,
-    describer,
+    fast_describer,
+    description_worker,
+    live_frame_streamer: LiveFrameStreamer,
     show_preview: bool,
 ) -> None:
     detections = detector.detect(frame)
@@ -106,11 +138,13 @@ def _process_frame(
 
     for event in new_events:
         suppressed, reason = context.should_suppress(event.label)
-        description = describer.describe(event.label, settings.event_min_duration_s, context_reason=reason)
+        description = fast_describer.describe(
+            event.label, settings.event_min_duration_s, context_reason=reason, frame=frame
+        )
 
         if suppressed:
             logger.info("Event %s suppressed by context engine: %s", event.event_id, reason)
-            continue  # expected occurrence (e.g. scheduled visitor) — not evidence-worthy
+            continue
 
         logger.info(
             "Event %s: %s (severity=%s) — %s", event.event_id, event.label, description.severity, description.text
@@ -119,16 +153,21 @@ def _process_frame(
         described_event = dataclasses.replace(event, description=description.text, severity=description.severity)
         send_event_or_queue(described_event, outbox)
 
+        if description_worker is not None:
+            description_worker.enqueue(described_event, settings.event_min_duration_s, frame)
+
     finished_clip = recorder.pop_finished_clip()
     if finished_clip is not None:
         _seal_evidence(finished_clip)
 
-    if show_preview:
-        import cv2
+    import cv2
 
-        for det in detections:
-            x, y, w, h = det.box
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    for det in detections:
+        x, y, w, h = det.box
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    live_frame_streamer.update(frame)
+
+    if show_preview:
         cv2.imshow("sentinel", frame)
         cv2.waitKey(1)
 

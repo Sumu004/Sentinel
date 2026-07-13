@@ -84,7 +84,7 @@ def _sample_site(rng: np.random.Generator, site_shift: np.ndarray, n_samples: in
 
     X = np.vstack([real, false])
     y = np.concatenate([np.ones(n_real), np.zeros(n_false)])
-    X[:, 2] = X[:, 2] / 24.0  # normalize hour-of-day to a comparable scale
+    X[:, 2] = X[:, 2] / 24.0
 
     shuffle = rng.permutation(len(y))
     return X[shuffle], y[shuffle]
@@ -155,8 +155,6 @@ def run_federated_simulation(
         global_model.set_parameters(federated_average(client_params, client_sizes))
         round_accuracies_on_new_site.append(global_model.accuracy(X_new, y_new))
 
-    # baseline: each existing site's own solo-trained model (no federation),
-    # same number of local epochs, evaluated on the SAME new unseen site
     solo_accuracies_on_new_site = []
     for X_train, y_train in site_train_data:
         solo_model = TinyLogReg()

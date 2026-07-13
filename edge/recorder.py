@@ -44,7 +44,7 @@ class RingBufferRecorder:
         """
         if self._writer is not None:
             self._post_frames_needed = int(settings.capture_fps * settings.post_event_seconds)
-            return  # already recording — extend the tail instead of starting a new file
+            return
 
         settings.clips_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

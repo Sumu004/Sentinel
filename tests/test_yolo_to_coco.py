@@ -13,13 +13,11 @@ def _make_yolo_dataset(root: Path) -> Path:
         (root / "images" / split).mkdir(parents=True)
         (root / "labels" / split).mkdir(parents=True)
 
-    # one labelled image in train, one unlabelled (background) image in val
     img = np.zeros((100, 100, 3), dtype=np.uint8)
     cv2.imwrite(str(root / "images" / "train2007" / "a.jpg"), img)
     (root / "labels" / "train2007" / "a.txt").write_text("0 0.5 0.5 0.2 0.4\n")
 
     cv2.imwrite(str(root / "images" / "val2007" / "b.jpg"), img)
-    # no label file for b.jpg — background image, should convert with 0 annotations
 
     data_yaml = root / "data.yaml"
     data_yaml.write_text(
@@ -43,9 +41,8 @@ def test_convert_dataset_produces_valid_coco(tmp_path: Path):
     assert train_coco["categories"] == [{"id": 1, "name": "person", "supercategory": "none"}]
 
     ann = train_coco["annotations"][0]
-    # cx=0.5, cy=0.5, w=0.2, h=0.4 on a 100x100 image -> x_min=40, y_min=30, w=20, h=40
     assert ann["bbox"] == [40.0, 30.0, 20.0, 40.0]
-    assert ann["category_id"] == 1  # COCO category ids are 1-indexed
+    assert ann["category_id"] == 1
 
 
 def test_convert_dataset_handles_background_images(tmp_path: Path):
@@ -56,4 +53,101 @@ def test_convert_dataset_handles_background_images(tmp_path: Path):
 
     valid_coco = json.loads((out_dir / "valid" / "_annotations.coco.json").read_text())
     assert len(valid_coco["images"]) == 1
-    assert len(valid_coco["annotations"]) == 0  # background image, no boxes
+    assert len(valid_coco["annotations"]) == 0
+
+
+def _make_voc_shaped_dataset(root: Path) -> Path:
+    """Mirrors the real VOC.yaml shape (train: a *list* of dirs, e.g.
+    images/train2012 + images/train2007) — a real Colab run against
+    `data=VOC.yaml` crashed with `TypeError: unsupported operand type(s) for
+    /: 'PosixPath' and 'list'` because the converter assumed a single string
+    path per split.
+    """
+    for split in ["train2007", "train2012", "val2007"]:
+        (root / "images" / split).mkdir(parents=True)
+        (root / "labels" / split).mkdir(parents=True)
+
+    img = np.zeros((100, 100, 3), dtype=np.uint8)
+    cv2.imwrite(str(root / "images" / "train2007" / "000005.jpg"), img)
+    (root / "labels" / "train2007" / "000005.txt").write_text("0 0.5 0.5 0.2 0.4\n")
+    cv2.imwrite(str(root / "images" / "train2012" / "000005.jpg"), img)
+    (root / "labels" / "train2012" / "000005.txt").write_text("0 0.25 0.25 0.1 0.1\n")
+
+    cv2.imwrite(str(root / "images" / "val2007" / "b.jpg"), img)
+
+    data_yaml = root / "data.yaml"
+    data_yaml.write_text(
+        yaml.dump(
+            {
+                "path": str(root),
+                "train": ["images/train2007", "images/train2012"],
+                "val": ["images/val2007"],
+                "nc": 1,
+                "names": ["person"],
+            }
+        )
+    )
+    return data_yaml
+
+
+def test_convert_dataset_accepts_string_out_dir(tmp_path: Path):
+    """Regression test: the notebook passes `COCO_DIR = '/content/voc_coco'`
+    as a plain string (not a Path). `convert_dataset` must normalize it —
+    without that, `out_dir / coco_split_name` inside the function raises
+    `TypeError: unsupported operand type(s) for /: 'str' and 'str'`.
+    """
+    data_yaml = _make_voc_shaped_dataset(tmp_path / "voc_ds")
+    out_dir_str = str(tmp_path / "coco_ds_str")
+
+    counts = convert_dataset(data_yaml, out_dir_str)
+
+    assert counts["train"] == 2
+    assert (Path(out_dir_str) / "train" / "_annotations.coco.json").exists()
+
+
+def test_convert_dataset_merges_list_of_dirs_like_real_voc_yaml(tmp_path: Path):
+    data_yaml = _make_voc_shaped_dataset(tmp_path / "voc_ds")
+    out_dir = tmp_path / "coco_ds"
+
+    counts = convert_dataset(data_yaml, out_dir)
+
+    assert counts["train"] == 2
+    assert counts["valid"] == 1
+
+    train_coco = json.loads((out_dir / "train" / "_annotations.coco.json").read_text())
+    assert len(train_coco["images"]) == 2
+    assert len(train_coco["annotations"]) == 2
+    file_names = {img["file_name"] for img in train_coco["images"]}
+    assert file_names == {"train2007_000005.jpg", "train2012_000005.jpg"}
+    assert (out_dir / "train" / "train2007_000005.jpg").exists()
+    assert (out_dir / "train" / "train2012_000005.jpg").exists()
+
+
+def test_convert_dataset_resolves_relative_path_against_dataset_root_not_yaml_location(tmp_path: Path):
+    """Regression test for the real Colab failure: Ultralytics' VOC.yaml has
+    `path: VOC` (relative) and downloads the dataset to `DATASETS_DIR/VOC`.
+    When the yaml being read is the copy bundled *inside the ultralytics
+    package* (falls back there because DATASETS_DIR/VOC.yaml doesn't exist),
+    resolving `path: VOC` relative to that package folder points nowhere —
+    silently producing `images_dirs = []` for every split (counts == {}), not
+    an error. `dataset_root` must override this to the actual download
+    location regardless of where the yaml file itself lives.
+    """
+    dataset_root = tmp_path / "actual_datasets_dir"
+    (dataset_root / "VOC" / "images" / "train2007").mkdir(parents=True)
+    (dataset_root / "VOC" / "labels" / "train2007").mkdir(parents=True)
+    img = np.zeros((100, 100, 3), dtype=np.uint8)
+    cv2.imwrite(str(dataset_root / "VOC" / "images" / "train2007" / "a.jpg"), img)
+    (dataset_root / "VOC" / "labels" / "train2007" / "a.txt").write_text("0 0.5 0.5 0.2 0.4\n")
+
+    yaml_elsewhere_dir = tmp_path / "somewhere" / "else" / "entirely"
+    yaml_elsewhere_dir.mkdir(parents=True)
+    data_yaml = yaml_elsewhere_dir / "VOC.yaml"
+    data_yaml.write_text(
+        yaml.dump({"path": "VOC", "train": "images/train2007", "nc": 1, "names": ["person"]})
+    )
+
+    out_dir = tmp_path / "coco_ds"
+    counts = convert_dataset(data_yaml, out_dir, dataset_root=dataset_root)
+
+    assert counts == {"train": 1}

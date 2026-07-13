@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sentinel — Live Dashboard</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --panel: #ffffff;
+    --border: #e2e5ea;
+    --text: #1a1d23;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --low: #6b7280;
+    --medium: #d97706;
+    --high: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 14px 24px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { font-size: 17px; margin: 0; }
+  #status {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #f0f0f0;
+    color: var(--muted);
+  }
+  #status.connected { background: #ecfdf5; color: #059669; }
+  #status.disconnected { background: #fef2f2; color: #dc2626; }
+
+  main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 14px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .panel h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 0 0 10px 0;
+  }
+  .full-width { grid-column: 1 / -1; }
+
+  #controls-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .pill {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    padding: 3px 10px; border-radius: 999px;
+  }
+  .pill.stopped { background: #f0f0f0; color: var(--muted); }
+  .pill.running { background: #ecfdf5; color: #059669; }
+  .pill.error { background: #fef2f2; color: #dc2626; }
+  button {
+    padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--accent); color: white; font-size: 13px; cursor: pointer;
+  }
+  button:disabled { background: #d1d5db; cursor: not-allowed; }
+  button.danger { background: #dc2626; }
+  button.secondary { background: white; color: var(--text); }
+  #pipeline-log {
+    margin-top: 10px;
+    background: #0f1115; color: #cfe4ff;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px; line-height: 1.5;
+    border-radius: 8px; padding: 10px;
+    max-height: 100px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+  }
+
+  #tracking-wrap {
+    position: relative;
+    background: #000;
+    border-radius: 8px;
+    overflow: hidden;
+    aspect-ratio: 4 / 3;
+  }
+  #tracking-feed { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #tracking-placeholder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #9ca3af; font-size: 13px; text-align: center; padding: 20px;
+  }
+
+  .event-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: #fafbfc;
+  }
+  .event-card:last-child { margin-bottom: 0; }
+  .event-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .event-label { font-weight: 600; font-size: 14px; }
+  .severity {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 999px; color: white;
+  }
+  .severity.low { background: var(--low); }
+  .severity.medium { background: var(--medium); }
+  .severity.high { background: var(--high); }
+  .event-desc { font-size: 13px; color: var(--text); line-height: 1.5; }
+
+  #events-list { max-height: 420px; overflow-y: auto; }
+  #events-empty { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sentinel — Live Dashboard</h1>
+  <span id="status" class="disconnected">connecting…</span>
+</header>
+
+<main>
+  <div class="panel full-width">
+    <h2>Controls</h2>
+    <div id="controls-row">
+      <span id="pipeline-status" class="pill stopped">stopped</span>
+      <button id="start-btn">Start pipeline</button>
+      <button id="stop-btn" class="danger" disabled>Stop pipeline</button>
+      <button id="refresh-btn" class="secondary">Refresh (clear recordings &amp; logs)</button>
+    </div>
+    <div id="pipeline-log"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Live tracking</h2>
+    <div id="tracking-wrap">
+      <img id="tracking-feed" alt="Live annotated tracking feed" />
+      <div id="tracking-placeholder">No signal — click "Start pipeline" above.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Live events &amp; descriptions</h2>
+    <div id="events-list">
+      <div id="events-empty">Waiting for events…</div>
+    </div>
+  </div>
+</main>
+
+<script>
+const statusEl = document.getElementById('status');
+const eventsList = document.getElementById('events-list');
+const eventsEmpty = document.getElementById('events-empty');
+const trackingFeedEl = document.getElementById('tracking-feed');
+const trackingPlaceholderEl = document.getElementById('tracking-placeholder');
+const pipelineStatusEl = document.getElementById('pipeline-status');
+const startBtn = document.getElementById('start-btn');
+const stopBtn = document.getElementById('stop-btn');
+const refreshBtn = document.getElementById('refresh-btn');
+const pipelineLogEl = document.getElementById('pipeline-log');
+
+const eventCards = new Map(); // event_id -> card element
+
+function setStatus(connected) {
+  statusEl.textContent = connected ? 'connected' : 'disconnected';
+  statusEl.className = connected ? 'connected' : 'disconnected';
+}
+
+function severityClass(sev) {
+  return ['low', 'medium', 'high'].includes(sev) ? sev : 'medium';
+}
+
+function renderEvent(data) {
+  eventsEmpty.style.display = 'none';
+
+  let card = eventCards.get(data.event_id);
+  if (!card) {
+    card = document.createElement('div');
+    card.className = 'event-card';
+    eventCards.set(data.event_id, card);
+    eventsList.prepend(card);
+  }
+
+  const label = data.label || card.dataset.label || 'event';
+  const severity = data.severity || card.dataset.severity || 'medium';
+  const description = data.description || card.dataset.description || '';
+  card.dataset.label = label;
+  card.dataset.severity = severity;
+  card.dataset.description = description;
+
+  card.innerHTML = `
+    <div class="event-top">
+      <span class="event-label">${label}</span>
+      <span class="severity ${severityClass(severity)}">${severity}</span>
+    </div>
+    <div class="event-desc">${description}</div>
+  `;
+}
+
+function connectStream() {
+  const es = new EventSource('/events/stream');
+  es.onopen = () => setStatus(true);
+  es.onerror = () => setStatus(false);
+  es.onmessage = (msg) => {
+    try { renderEvent(JSON.parse(msg.data)); } catch (e) {}
+  };
+}
+connectStream();
+
+let trackingStreamActive = false;
+function checkTrackingFeed() {
+  fetch('/live-frame', { cache: 'no-store' })
+    .then(r => {
+      if (r.ok && !trackingStreamActive) {
+        trackingStreamActive = true;
+        trackingFeedEl.src = '/live-frame/stream?_=' + Date.now();
+        trackingPlaceholderEl.style.display = 'none';
+      } else if (!r.ok && trackingStreamActive) {
+        trackingStreamActive = false;
+        trackingFeedEl.removeAttribute('src');
+        trackingPlaceholderEl.style.display = 'flex';
+      }
+    })
+    .catch(() => {
+      if (trackingStreamActive) {
+        trackingStreamActive = false;
+        trackingFeedEl.removeAttribute('src');
+        trackingPlaceholderEl.style.display = 'flex';
+      }
+    });
+}
+checkTrackingFeed();
+setInterval(checkTrackingFeed, 3000);
+
+function setPipelineStatus(running, isError) {
+  pipelineStatusEl.textContent = isError ? 'error' : (running ? 'running' : 'stopped');
+  pipelineStatusEl.className = 'pill ' + (isError ? 'error' : (running ? 'running' : 'stopped'));
+  startBtn.disabled = running;
+  stopBtn.disabled = !running;
+  refreshBtn.disabled = running; // clearing recordings is refused server-side while running anyway
+}
+
+function pollPipelineStatus() {
+  fetch('/pipeline/status').then(r => r.json()).then(data => setPipelineStatus(data.running, false)).catch(() => {});
+  fetch('/pipeline/logs?lines=20').then(r => r.json()).then(data => {
+    pipelineLogEl.textContent = data.lines.join('\n');
+    pipelineLogEl.scrollTop = pipelineLogEl.scrollHeight;
+    const hasError = data.lines.some(l => /error|traceback|exception|not authorized/i.test(l));
+    if (hasError) pipelineStatusEl.classList.add('error');
+  }).catch(() => {});
+}
+
+startBtn.addEventListener('click', () => {
+  startBtn.disabled = true;
+  fetch('/pipeline/start', { method: 'POST' })
+    .then(r => r.json())
+    .then(() => { setPipelineStatus(true, false); pollPipelineStatus(); })
+    .catch(() => { startBtn.disabled = false; });
+});
+
+stopBtn.addEventListener('click', () => {
+  stopBtn.disabled = true;
+  fetch('/pipeline/stop', { method: 'POST' })
+    .then(r => r.json())
+    .then(() => setPipelineStatus(false, false))
+    .catch(() => { stopBtn.disabled = false; });
+});
+
+refreshBtn.addEventListener('click', () => {
+  if (!confirm('This deletes all recorded clip files and clears the pipeline log. Continue?')) return;
+  refreshBtn.disabled = true;
+  fetch('/recordings/clear', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      eventCards.clear();
+      eventsList.querySelectorAll('.event-card').forEach(el => el.remove());
+      eventsEmpty.style.display = 'block';
+      pipelineLogEl.textContent = '';
+      alert('Cleared ' + data.files_deleted + ' recorded file(s) and the pipeline log.');
+    })
+    .catch(err => alert('Could not clear recordings: ' + err))
+    .finally(() => { refreshBtn.disabled = false; });
+});
+
+pollPipelineStatus();
+setInterval(pollPipelineStatus, 2000);
+</script>
+
+</body>
+</html>

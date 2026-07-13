@@ -102,7 +102,7 @@ class NotificationEngine:
 
     def notify(self, payload: NotificationPayload) -> dict[str, bool]:
         if _SEVERITY_ORDER.get(payload.severity, 0) < self._min_severity:
-            return {}  # below the configured threshold — not worth alerting on
+            return {}
 
         results = {}
         for channel in self._channels:

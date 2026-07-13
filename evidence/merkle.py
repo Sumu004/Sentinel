@@ -20,8 +20,8 @@ def _hash_pair(a: bytes, b: bytes) -> bytes:
 @dataclass(frozen=True)
 class InclusionProof:
     leaf_hash: str
-    siblings: list[str]  # sibling hashes from leaf to root, hex
-    directions: list[str]  # "L" or "R" — which side the sibling is on, per level
+    siblings: list[str]
+    directions: list[str]
 
     def verify(self, root_hex: str) -> bool:
         current = bytes.fromhex(self.leaf_hash)
