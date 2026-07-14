@@ -1,9 +1,3 @@
-"""Multi-object tracking + event debouncing.
-
-A dependency-free centroid tracker: turns N raw detections per frame
-into a track that persists across frames.
-"""
-
 from __future__ import annotations
 
 import math
@@ -31,10 +25,6 @@ class Track:
 
 @dataclass
 class CentroidTracker:
-    """Nearest-centroid tracker. Produces a list[Track] with the same fields
-    used by events.py.
-    """
-
     max_distance: float = 75.0
     tracks: dict[int, Track] = field(default_factory=dict)
     _next_id: int = 0

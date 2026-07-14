@@ -1,7 +1,3 @@
-"""Tests for ByteTrackTracker against the real supervision ByteTrack
-implementation, not mocked.
-"""
-
 from edge.bytetrack_tracker import ByteTrackTracker, make_tracker
 from edge.detector import Detection
 from edge.tracker import CentroidTracker, Track
@@ -55,9 +51,6 @@ def test_bytetrack_eventually_drops_stale_tracks():
 
 
 def _with_tracker_backend(value: str):
-    """Settings is a frozen dataclass, so object.__setattr__ is needed to
-    patch it in tests — same pattern as tests/test_clear_recordings.py.
-    """
     from config import settings
 
     original = settings.tracker_backend

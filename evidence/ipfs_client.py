@@ -1,9 +1,3 @@
-"""IPFS upload.
-
-Gated behind SENTINEL_IPFS_ENABLED so the pipeline runs without it
-installed. Requires a local `ipfs daemon`.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -18,10 +12,6 @@ class IPFSError(RuntimeError):
 
 
 def add_to_ipfs(filepath: Path) -> str:
-    """Upload a file to a local IPFS node via its HTTP API. Returns the CID.
-
-    Raises IPFSError on any failure — never returns an undefined value.
-    """
     if not settings.ipfs_enabled:
         raise IPFSError("IPFS is disabled (SENTINEL_IPFS_ENABLED=false) — nothing was uploaded.")
 

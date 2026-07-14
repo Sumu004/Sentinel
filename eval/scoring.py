@@ -1,15 +1,3 @@
-"""Scoring system for Sentinel (see TESTING.md for the protocol).
-
-Three separate scores:
-
-1. Detection rate (L1) — precision/recall/F1 per class via IoU matching,
-   plus false alarms per camera per day.
-2. Description rate (L2) — subject/action/severity accuracy and
-   hallucination rate.
-3. System score (end-to-end) — right alert, right severity, sealed
-   evidence, in time.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -57,10 +45,6 @@ class DetectionScore:
 def score_detections(
     preds: list[PredBox], gts: list[GTBox], iou_threshold: float = 0.5
 ) -> DetectionScore:
-    """Greedy IoU matching (highest-confidence prediction first). Each GT box
-    is matched at most once; unmatched predictions are false positives,
-    unmatched GTs are false negatives.
-    """
     counts: dict[str, dict[str, int]] = {}
 
     def bump(label: str, key: str) -> None:
@@ -115,9 +99,6 @@ def score_detections(
 
 
 def false_alarms_per_day(spurious_events: int, hours_observed: float) -> float:
-    """How often the system alerts when nothing happened, computed over
-    event-free footage. Lower is better.
-    """
     if hours_observed <= 0:
         raise ValueError("hours_observed must be > 0")
     return round(spurious_events * (24.0 / hours_observed), 2)
@@ -125,8 +106,6 @@ def false_alarms_per_day(spurious_events: int, hours_observed: float) -> float:
 
 @dataclass(frozen=True)
 class DescriptionGT:
-    """Ground truth for one event's description, labelled by a human reviewer."""
-
     subject: str
     action: str
     severity: str
@@ -144,13 +123,6 @@ class DescriptionResult:
 def score_description(
     predicted_text: str, gt: DescriptionGT, hallucination_terms: list[str] | None = None
 ) -> DescriptionResult:
-    """Scores a generated description against human-labelled attributes by
-    keyword presence.
-
-    `hallucination_terms`: words that, if present, indicate the description
-    asserted something not in the event. A hallucination zeroes the score
-    regardless of other matches.
-    """
     text = predicted_text.lower()
     subject_ok = gt.subject.lower() in text
     action_ok = gt.action.lower() in text
@@ -166,7 +138,6 @@ def score_description(
 
 
 def description_rate(results: list[DescriptionResult]) -> dict[str, float]:
-    """Aggregate description performance across a test set of events."""
     if not results:
         return {"mean_score": 0.0, "subject_acc": 0.0, "action_acc": 0.0, "severity_acc": 0.0, "hallucination_rate": 0.0}
     n = len(results)
@@ -181,8 +152,6 @@ def description_rate(results: list[DescriptionResult]) -> dict[str, float]:
 
 @dataclass(frozen=True)
 class EventOutcome:
-    """One real event from the live test, scored at every stage of the pipeline."""
-
     detected: bool
     described_correctly: bool
     severity_routed_correctly: bool
@@ -191,10 +160,6 @@ class EventOutcome:
 
 
 def system_score(outcomes: list[EventOutcome], weights: dict[str, float] | None = None) -> dict[str, float]:
-    """End-to-end score. An event only fully counts if it cleared every
-    stage; partial credit is given per-stage. The composite is the weighted
-    mean of the per-stage pass rates.
-    """
     if not outcomes:
         return {"system_score": 0.0}
 

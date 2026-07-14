@@ -1,11 +1,3 @@
-"""Pose/action — fall detection.
-
-YoloPoseEstimator: keypoint inference via Ultralytics' pose models
-(yolo11n-pose.pt, auto-downloaded). analyze_fall(keypoints): a fall is
-inferred from body aspect ratio + hip-below-shoulder inversion — a
-heuristic, not a trained classifier.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,10 +17,6 @@ class PoseEstimator:
 
 
 class YoloPoseEstimator(PoseEstimator):
-    """Real keypoint inference. `model_path` defaults to Ultralytics' free
-    COCO-pretrained pose model — no fine-tuning required to get real keypoints.
-    """
-
     def __init__(self, model_path: str = "yolo11n-pose.pt", conf: float = 0.35):
         from ultralytics import YOLO
 
@@ -52,13 +40,6 @@ _L_HIP, _R_HIP = 11, 12
 
 
 def analyze_fall(keypoints: np.ndarray, aspect_ratio_threshold: float = 1.0) -> bool:
-    """A standing person's bounding box is taller than wide with hips above
-    shoulders; a fallen person's box flattens out and hip/shoulder height
-    collapses toward the same level. Both conditions must hold.
-
-    `keypoints` is (17, 2) in COCO order; a (0, 0) entry means "not
-    detected" and is ignored.
-    """
     valid = keypoints[(keypoints[:, 0] > 0) | (keypoints[:, 1] > 0)]
     if valid.shape[0] < 4:
         return False

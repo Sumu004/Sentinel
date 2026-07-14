@@ -1,10 +1,3 @@
-"""Merkle-tree daily anchoring.
-
-The day's clip hashes are combined into one tree; only the root gets
-anchored. Any single clip can still be proven part of that day's root
-via a short inclusion proof.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -30,10 +23,6 @@ class InclusionProof:
 
 
 class MerkleTree:
-    """Built from a list of hex-encoded leaf hashes (clip sha256 digests).
-    Odd levels duplicate the last node (the standard Bitcoin/CT convention).
-    """
-
     def __init__(self, leaf_hashes: list[str]):
         if not leaf_hashes:
             raise ValueError("Cannot build a Merkle tree with zero leaves")

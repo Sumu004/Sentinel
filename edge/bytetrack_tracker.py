@@ -1,10 +1,3 @@
-"""ByteTrack tracker via the `supervision` library.
-
-Imported from its stable submodule path (`sv.ByteTrack` is deprecated as
-of supervision 0.28). Exposes the same `update(detections) -> list[Track]`
-interface as `edge/tracker.py`'s `CentroidTracker`, so it's a drop-in swap.
-"""
-
 from __future__ import annotations
 
 import time

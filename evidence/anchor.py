@@ -1,10 +1,3 @@
-"""Public timestamp anchoring via OpenTimestamps.
-
-Calls public Bitcoin-calendar servers — free, no account, no API key.
-Requires the `ots` CLI (`pip install opentimestamps-client`). Optional,
-gated behind SENTINEL_ANCHOR_ENABLED.
-"""
-
 from __future__ import annotations
 
 import shutil
@@ -19,11 +12,6 @@ class AnchorError(RuntimeError):
 
 
 def anchor_file(path: Path) -> Path:
-    """Stamp `path` with OpenTimestamps, producing a `<path>.ots` proof file.
-
-    Confirmation isn't immediate — use `ots upgrade <file>.ots` later to
-    attach the completed Bitcoin proof.
-    """
     if not settings.anchor_enabled:
         raise AnchorError("Anchoring is disabled (SENTINEL_ANCHOR_ENABLED=false).")
 

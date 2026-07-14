@@ -1,5 +1,3 @@
-"""Central config. Every value is env-driven — no path/key/table name is hardcoded."""
-
 from __future__ import annotations
 
 import os

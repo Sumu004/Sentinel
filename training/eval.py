@@ -1,10 +1,3 @@
-"""Bake-off evaluation.
-
-Held-out mAP delegates to each library's own validator.
-false-alarms-per-camera-per-day needs real, event-free footage from a
-deployed camera.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -33,12 +26,6 @@ def eval_rfdetr(checkpoint: Path, dataset_dir: Path) -> dict:
 
 
 def count_false_alarms(detector: Detector, footage_path: Path, hours_of_footage: float) -> float:
-    """Runs `detector` over event-free footage and returns alarms/camera/day.
-
-    `footage_path` should contain no real events. Reuses the tracker/debounce
-    path from the live pipeline so the number reflects what would actually
-    alert someone.
-    """
     import cv2
 
     cap = cv2.VideoCapture(str(footage_path))

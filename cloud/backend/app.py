@@ -1,8 +1,3 @@
-"""Local FastAPI backend for events, heartbeats, and pipeline control.
-
-Write endpoints require a bearer token when SENTINEL_API_TOKEN is set.
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -44,10 +39,6 @@ _pipeline_log_lines: deque[str] = deque(maxlen=500)
 
 
 def _drain_pipeline_output(proc: subprocess.Popen) -> None:
-    """Runs on a background thread for the pipeline subprocess's lifetime,
-    continuously draining stdout into a bounded deque so /pipeline/logs can
-    do a non-destructive tail read at any time.
-    """
     if proc.stdout is None:
         return
     for line in proc.stdout:
@@ -73,9 +64,6 @@ def health() -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard() -> str:
-    """Single live dashboard: a browser webcam preview plus real-time
-    events/descriptions/logs streamed from GET /events and GET /events/stream.
-    """
     return _DASHBOARD_HTML
 
 
@@ -108,10 +96,6 @@ def list_events(limit: int = 100, org_id: str | None = None) -> list[EventOut]:
 
 @app.get("/events/stream")
 async def stream_events():
-    """Server-Sent Events — a connected client gets pushed new events as they
-    happen, instead of polling.
-    """
-
     async def event_generator():
         queue: asyncio.Queue = asyncio.Queue()
         _subscribers.append(queue)
@@ -135,9 +119,6 @@ def assign_event(event_id: str) -> dict:
 
 @app.patch("/events/{event_id}/description", dependencies=[Depends(require_token)])
 def update_event_description(event_id: str, payload: dict) -> dict:
-    """Patches a richer description onto an event that was already created
-    with a fast template description.
-    """
     description = payload.get("description")
     severity = payload.get("severity")
     if not description or not severity:
@@ -157,9 +138,6 @@ def update_event_description(event_id: str, payload: dict) -> dict:
 
 @app.post("/heartbeat")
 def heartbeat(payload: dict) -> dict:
-    """A site pings this periodically. A site that stops pinging is flagged
-    `silent` by /sites/status.
-    """
     site_id = payload.get("site_id")
     if not site_id:
         raise HTTPException(status_code=400, detail="site_id is required")
@@ -178,9 +156,6 @@ def sites_status() -> list[dict]:
 
 @app.put("/live-frame", dependencies=[Depends(require_token)])
 async def put_live_frame(request: Request) -> dict:
-    """edge/live_frame_streamer.py PUTs the latest JPEG-encoded, annotated
-    frame here at a throttled rate.
-    """
     global _latest_frame, _latest_frame_at
     body = await request.body()
     if not body:
@@ -193,9 +168,6 @@ async def put_live_frame(request: Request) -> dict:
 
 @app.get("/live-frame")
 def get_live_frame() -> Response:
-    """Single latest annotated frame as a plain JPEG — useful for a quick
-    manual check (curl/browser) without needing MJPEG support.
-    """
     with _latest_frame_lock:
         frame = _latest_frame
     if frame is None:
@@ -205,11 +177,6 @@ def get_live_frame() -> Response:
 
 @app.get("/live-frame/stream")
 async def stream_live_frame():
-    """MJPEG stream (multipart/x-mixed-replace) the dashboard's <img> tag
-    consumes directly. Stale frames (no pipeline currently pushing) are
-    skipped so the stream stops rather than freezing on an old frame.
-    """
-
     async def frame_generator():
         last_sent_at = 0.0
         while True:
@@ -231,9 +198,6 @@ async def stream_live_frame():
 
 @app.post("/pipeline/start", dependencies=[Depends(require_token)])
 def start_pipeline() -> dict:
-    """Spawns `python -m edge.main --no-preview` as a child process, so the
-    dashboard's Start button replaces a manual terminal command.
-    """
     global _pipeline_process
     with _pipeline_lock:
         if _pipeline_process is not None and _pipeline_process.poll() is None:
@@ -278,18 +242,11 @@ def pipeline_status() -> dict:
 
 @app.get("/pipeline/logs")
 def pipeline_logs(lines: int = 50) -> dict:
-    """Tail of the pipeline subprocess's stdout/stderr, so the dashboard can
-    show real errors instead of a silent "not running".
-    """
     return {"lines": list(_pipeline_log_lines)[-lines:]}
 
 
 @app.post("/recordings/clear", dependencies=[Depends(require_token)])
 def clear_recordings() -> dict:
-    """Deletes recorded clip files and their signed manifests. Does not touch
-    the events database or the chain-of-custody log. Refuses to run while
-    the pipeline is actively recording.
-    """
     with _pipeline_lock:
         if _pipeline_process is not None and _pipeline_process.poll() is None:
             raise HTTPException(

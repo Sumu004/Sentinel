@@ -1,10 +1,3 @@
-"""Audio — loud-sound detection.
-
-An RMS-energy-based detector: answers "something loud just happened",
-not "what kind of sound". Upgrade path: a trained classifier over
-mel-spectrograms behind the same AudioEventDetector interface.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,11 +18,6 @@ class AudioEventDetector:
 
 @dataclass
 class RMSLoudSoundDetector(AudioEventDetector):
-    """`threshold` is on RMS amplitude of normalized float32 samples in
-    [-1, 1] — a sudden bang/crash/shout pushes RMS well above steady
-    ambient noise.
-    """
-
     threshold: float = 0.2
 
     def analyze(self, samples: np.ndarray) -> AudioEvent:

@@ -1,16 +1,3 @@
-"""Event description.
-
-Three backends behind one interface (SENTINEL_VLM_BACKEND):
-
-- "template" (default) — deterministic, rule-based description from the
-  event's own fields.
-- "qwen-local" — Qwen2.5-VL via a local Ollama server.
-- "frontier" — a hosted VLM (Claude/GPT-4o-class) for the escalation
-  tier; requires an API key, not called automatically.
-
-`Describer.describe()` takes an optional frame — qwen-local requires it.
-"""
-
 from __future__ import annotations
 
 import base64
@@ -52,10 +39,6 @@ _SEVERITY_BY_LABEL = {
 
 
 class TemplateDescriber(Describer):
-    """Deterministic, no dependencies — a rule-based description generator
-    that works with zero setup.
-    """
-
     def describe(
         self, label: str, duration_s: float, context_reason: str = "", frame: np.ndarray | None = None
     ) -> EventDescription:
@@ -73,10 +56,6 @@ class TemplateDescriber(Describer):
 
 
 def _encode_frame_jpeg_base64(frame: np.ndarray, max_dim: int = 512) -> str:
-    """Downscales before encoding — the biggest lever on VLM latency. Capping
-    the longer side at 512px cuts visual tokens substantially with no
-    visible loss for scene-description tasks.
-    """
     h, w = frame.shape[:2]
     if max(h, w) > max_dim:
         scale = max_dim / max(h, w)
@@ -88,11 +67,6 @@ def _encode_frame_jpeg_base64(frame: np.ndarray, max_dim: int = 512) -> str:
 
 
 class QwenLocalDescriber(Describer):
-    """Qwen2.5-VL inference via a local Ollama server. Requires `ollama serve`
-    running with the model pulled (`ollama pull qwen2.5vl:3b`). Raises
-    clearly if the server/model isn't reachable.
-    """
-
     def __init__(self, endpoint: str | None = None, model: str | None = None, timeout_s: float = 60.0):
         self._endpoint = endpoint or settings.vlm_endpoint
         self._model = model or settings.vlm_model
@@ -143,10 +117,6 @@ class QwenLocalDescriber(Describer):
 
 
 class FrontierDescriber(Describer):
-    """A hosted frontier VLM. Requires an API key and is a paid,
-    consent-gated action; never called automatically.
-    """
-
     def __init__(self, api_key: str | None = None):
         if not api_key:
             raise ValueError(

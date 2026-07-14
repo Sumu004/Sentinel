@@ -1,11 +1,3 @@
-"""Download a Roboflow Universe dataset in both formats: COCO JSON for
-RF-DETR, YOLO txt for YOLO12. Requires a free Roboflow account and API
-key (ROBOFLOW_API_KEY env var).
-
-Usage:
-    python -m training.prepare_data --workspace mahad-ahmed --project gun-and-knife-detection --version 1 --out ./data/datasets/weapons
-"""
-
 from __future__ import annotations
 
 import argparse

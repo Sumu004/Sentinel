@@ -1,9 +1,3 @@
-"""Posts events from the edge to the cloud backend.
-
-A failed send queues in edge/outbox.py instead of being dropped — see
-send_event_or_queue and edge/pipeline.py's periodic retry.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -28,9 +22,6 @@ def _headers() -> dict:
 
 
 def send_payload(payload: dict) -> bool:
-    """Posts a raw event payload dict. Returns False on any network failure —
-    never raises, since a network blip must not crash the edge loop.
-    """
     try:
         response = requests.post(
             f"{_base_url()}/events", json=payload, headers=_headers(), timeout=5
@@ -57,9 +48,6 @@ def send_event(event: Event) -> bool:
 
 
 def send_event_or_queue(event: Event, outbox: Outbox) -> bool:
-    """Try to send immediately; if that fails, queue it in the outbox so a
-    later retry_pending() call picks it up instead of the event being lost.
-    """
     if send_event(event):
         return True
     outbox.enqueue(event)
@@ -68,9 +56,6 @@ def send_event_or_queue(event: Event, outbox: Outbox) -> bool:
 
 
 def send_description_update(event_id: str, description: str, severity: str) -> bool:
-    """Patches a richer description onto an already-sent event, once a slow
-    VLM call finishes.
-    """
     try:
         response = requests.patch(
             f"{_base_url()}/events/{event_id}/description",
@@ -86,7 +71,6 @@ def send_description_update(event_id: str, description: str, severity: str) -> b
 
 
 def send_heartbeat() -> bool:
-    """Pings the backend so it knows this site is alive."""
     try:
         response = requests.post(
             f"{_base_url()}/heartbeat",

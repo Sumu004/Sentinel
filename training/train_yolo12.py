@@ -1,13 +1,3 @@
-"""Fine-tune YOLO12.
-
-Defaults to the pretrained checkpoint (yolo12s.pt), not the bare
-architecture.
-
-Usage:
-    pip install ultralytics
-    python -m training.train_yolo12 --data ./data/datasets/remote-home/yolo/data.yaml --output-dir ./data/models/yolo12
-"""
-
 from __future__ import annotations
 
 import argparse

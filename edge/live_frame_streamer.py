@@ -1,9 +1,3 @@
-"""Streams the annotated frame to the dashboard on a background thread.
-
-Holds only the single most recent frame (no queue) and pushes it to
-PUT /live-frame at its own pace, independent of the camera's frame rate.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -32,7 +26,6 @@ class LiveFrameStreamer:
         self._thread.start()
 
     def update(self, frame: np.ndarray) -> None:
-        """Called from the frame loop — must stay O(1), never do I/O here."""
         with self._lock:
             self._latest_frame = frame
 

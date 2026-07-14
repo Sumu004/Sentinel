@@ -47,9 +47,6 @@ def test_federated_simulation_runs_and_improves_over_rounds():
 
 
 def test_federation_beats_solo_on_average_across_new_sites():
-    """Checks that, averaged across several unseen new sites, the federated
-    model out-generalizes the mean of individual sites' solo models.
-    """
     fed_scores = []
     solo_scores = []
     for new_seed in range(999, 1004):

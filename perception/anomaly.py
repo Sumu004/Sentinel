@@ -1,9 +1,3 @@
-"""Anomaly detection.
-
-Per-label running mean/std of track speed and duration; flags a track
-as anomalous when it deviates past a z-score threshold.
-"""
-
 from __future__ import annotations
 
 import math
@@ -40,10 +34,6 @@ class AnomalyDetector:
 
 @dataclass
 class StatisticalAnomalyDetector(AnomalyDetector):
-    """Per-label baseline. Needs a warm-up period (`min_samples`) before it
-    can flag anything.
-    """
-
     z_threshold: float = 3.0
     min_samples: int = 8
     _speed_stats: dict[str, _RunningStats] = field(default_factory=dict)

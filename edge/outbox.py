@@ -1,8 +1,3 @@
-"""Store-and-forward outbox.
-
-A failed cloud send queues here and gets retried instead of being dropped.
-"""
-
 from __future__ import annotations
 
 import json
@@ -91,9 +86,6 @@ class Outbox:
 
 
 def retry_pending(outbox: Outbox, sender) -> int:
-    """Attempts to resend every queued item via `sender(payload) -> bool`.
-    Returns the number successfully sent.
-    """
     sent = 0
     for item in outbox.pending():
         if sender(item.payload):

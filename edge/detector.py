@@ -1,10 +1,3 @@
-"""Detection backends.
-
-MotionDetector: zero-download background-subtraction default.
-ModelDetector: runs a trained RF-DETR/YOLO12 model. Swap via
-SENTINEL_DETECTOR_BACKEND.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -28,10 +21,6 @@ class Detector:
 
 
 class MotionDetector(Detector):
-    """Background-subtraction detector. Free, no model weights, no internet.
-    Answers "did something move", not "what is it".
-    """
-
     def __init__(self, min_area: int = 1500):
         self._bg = cv2.createBackgroundSubtractorMOG2(detectShadows=True)
         self._min_area = min_area
@@ -53,14 +42,6 @@ class MotionDetector(Detector):
 
 
 class ModelDetector(Detector):
-    """Loads a fine-tuned YOLO/RF-DETR model and runs inference. Accepts an
-    Ultralytics `.pt` checkpoint (fine-tuned or COCO-pretrained).
-
-    Maps model output to the same `Detection` dataclass the motion detector
-    emits. Honours SENTINEL_DETECT_CLASSES — only configured classes raise
-    events.
-    """
-
     def __init__(self, model_path: str, conf: float = 0.35):
         if not model_path:
             raise ValueError(

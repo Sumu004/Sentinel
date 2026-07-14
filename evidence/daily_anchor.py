@@ -1,11 +1,3 @@
-"""Daily anchor job — ties signing.py, merkle.py, anchor.py, and custody.py
-together.
-
-Run once per day: collects the day's signed clip hashes, builds a Merkle
-tree, anchors the root via OpenTimestamps, and logs it in chain-of-custody
-alongside a per-clip inclusion proof.
-"""
-
 from __future__ import annotations
 
 import json

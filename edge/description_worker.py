@@ -1,11 +1,3 @@
-"""Runs slow VLM description calls on a background thread.
-
-An event is created immediately with a fast template description so
-alerting stays real-time. If a slower backend (qwen-local/frontier) is
-configured, this worker calls it and patches the richer description in
-once it's ready.
-"""
-
 from __future__ import annotations
 
 import logging

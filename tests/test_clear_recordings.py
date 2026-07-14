@@ -1,7 +1,3 @@
-"""POST /recordings/clear deletes clip files and clears the log buffer,
-but must never touch the events DB or the chain-of-custody log.
-"""
-
 from fastapi.testclient import TestClient
 
 from cloud.backend.app import app

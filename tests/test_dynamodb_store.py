@@ -1,7 +1,3 @@
-"""Tests for DynamoDBStore's save/list_recent/assign. boto3.resource is
-mocked, no AWS account needed.
-"""
-
 from unittest.mock import MagicMock, patch
 
 from cloud.backend.db import DynamoDBStore, EventRecord

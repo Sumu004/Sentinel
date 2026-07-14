@@ -1,11 +1,3 @@
-"""Re-identification.
-
-HistogramReID: HSV color-histogram, cosine similarity — free,
-zero-download default. OSNetReID: deep embeddings via torchreid (also
-needs `gdown` installed — torchreid's dataset-download code imports it
-without declaring it). Both implement the same ReIDEmbedder interface.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -20,8 +12,6 @@ class ReIDEmbedder:
 
 
 class HistogramReID(ReIDEmbedder):
-    """HSV color-histogram embedding. Free, real, no model weights."""
-
     def __init__(self, bins: tuple[int, int, int] = (8, 8, 8)):
         self._bins = bins
 
@@ -35,10 +25,6 @@ class HistogramReID(ReIDEmbedder):
 
 
 class OSNetReID(ReIDEmbedder):
-    """OSNet deep re-ID embedding via `torchreid`. Robust to lighting/angle/
-    partial-occlusion changes that fool `HistogramReID`'s color-only matching.
-    """
-
     _MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
     _STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
@@ -74,18 +60,11 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 
 @dataclass
 class Gallery:
-    """A small in-memory bank of known embeddings per identity, so a track
-    that disappears and reappears can be recognized as the same subject.
-    """
-
     embedder: ReIDEmbedder
     threshold: float = 0.85
     _identities: dict[str, np.ndarray] = field(default_factory=dict)
 
     def match_or_register(self, crop: np.ndarray) -> tuple[str, bool]:
-        """Returns (identity_id, is_new_match). Registers a new identity if
-        no existing one is similar enough.
-        """
         embedding = self.embedder.embed(crop)
         best_id, best_score = None, 0.0
         for identity_id, known in self._identities.items():

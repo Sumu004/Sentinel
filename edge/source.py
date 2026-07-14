@@ -1,8 +1,3 @@
-"""Video source abstraction — webcam or RTSP/ONVIF IP camera.
-
-Swap via SENTINEL_SOURCE_KIND.
-"""
-
 from __future__ import annotations
 
 from typing import Iterator
@@ -14,8 +9,6 @@ from config import settings
 
 
 class VideoSource:
-    """Common interface every source implements: iterate BGR frames."""
-
     def frames(self) -> Iterator[np.ndarray]:
         raise NotImplementedError
 
@@ -24,8 +17,6 @@ class VideoSource:
 
 
 class OpenCVSource(VideoSource):
-    """Wraps cv2.VideoCapture for both webcam indices and RTSP URLs."""
-
     def __init__(self, target: int | str):
         self._target = target
         self._cap = cv2.VideoCapture(target)
@@ -44,7 +35,6 @@ class OpenCVSource(VideoSource):
 
 
 def make_source() -> VideoSource:
-    """Factory driven entirely by config — see SENTINEL_SOURCE_KIND in .env.example."""
     if settings.source_kind == "rtsp":
         if not settings.rtsp_url:
             raise ValueError("SENTINEL_SOURCE_KIND=rtsp requires SENTINEL_RTSP_URL to be set")

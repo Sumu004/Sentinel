@@ -1,9 +1,3 @@
-"""Event storage, pluggable backend.
-
-SQLiteStore is the default (file-based, zero setup). DynamoDBStore targets
-the same interface for a real deployment. Swap via SENTINEL_STORAGE_BACKEND.
-"""
-
 from __future__ import annotations
 
 import sqlite3
@@ -35,8 +29,6 @@ class EventStore(Protocol):
 
 
 class SQLiteStore:
-    """Default store. Free, no server process, no account."""
-
     def __init__(self, db_path=None):
         self._db_path = db_path or settings.db_path
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -78,10 +70,6 @@ class SQLiteStore:
             )
 
     def _migrate_events_columns(self, conn: sqlite3.Connection) -> None:
-        """Adds any schema columns missing from a pre-existing database.
-        `CREATE TABLE IF NOT EXISTS` no-ops on an existing table, so this runs
-        on every startup; each ALTER is a no-op once the column exists.
-        """
         existing = {row["name"] for row in conn.execute("PRAGMA table_info(events)").fetchall()}
         migrations = {
             "org_id": "ALTER TABLE events ADD COLUMN org_id TEXT NOT NULL DEFAULT 'default'",
@@ -101,7 +89,6 @@ class SQLiteStore:
             )
 
     def site_statuses(self, silent_threshold_s: float) -> list[dict]:
-        """A site with no heartbeat within the threshold is flagged `silent`."""
         now = datetime.now(timezone.utc)
         with self._connect() as conn:
             rows = conn.execute("SELECT * FROM heartbeats").fetchall()
@@ -173,9 +160,6 @@ class SQLiteStore:
             return cur.rowcount > 0
 
     def update_description(self, event_id: str, description: str, severity: str) -> bool:
-        """Patches a slower, richer description onto an event row created earlier
-        with a fast template description.
-        """
         with self._connect() as conn:
             cur = conn.execute(
                 "UPDATE events SET description = ?, severity = ? WHERE event_id = ?",
@@ -185,10 +169,6 @@ class SQLiteStore:
 
 
 class DynamoDBStore:
-    """DynamoDBStore. Requires a table with `event_id` as the partition key
-    and a GSI on `assigned`.
-    """
-
     def __init__(self, table_name: str | None = None, region: str | None = None):
         import boto3
 

@@ -1,7 +1,3 @@
-"""Notification channels behind one interface — console/log by default,
-plus stubs for SMS, push, and webhook.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -27,8 +23,6 @@ class NotificationChannel:
 
 
 class ConsoleChannel(NotificationChannel):
-    """Logs the alert. Free, zero setup — the real default channel."""
-
     def send(self, payload: NotificationPayload) -> bool:
         logger.warning(
             "ALERT [%s] site=%s %s: %s", payload.severity.upper(), payload.site_id, payload.label, payload.description
@@ -37,10 +31,6 @@ class ConsoleChannel(NotificationChannel):
 
 
 class WebhookChannel(NotificationChannel):
-    """Posts the alert to any URL the user configures — Slack, Discord,
-    Teams, or a custom endpoint.
-    """
-
     def __init__(self, url: str):
         if not url:
             raise ValueError("WebhookChannel requires a URL — set SENTINEL_WEBHOOK_URL")
@@ -66,10 +56,6 @@ class WebhookChannel(NotificationChannel):
 
 
 class SMSChannel(NotificationChannel):
-    """Requires a paid SMS provider (Twilio et al.). Not wired up: needs an
-    account and credentials only the user can provide.
-    """
-
     def __init__(self, api_key: str | None = None):
         if not api_key:
             raise ValueError("SMSChannel requires a provider API key — this is a paid service, not enabled by default.")
@@ -80,10 +66,6 @@ class SMSChannel(NotificationChannel):
 
 
 class NotificationEngine:
-    """Routes to every configured channel; one channel failing doesn't block
-    the others.
-    """
-
     def __init__(self, channels: list[NotificationChannel] | None = None, min_severity: str = "low"):
         self._channels = channels if channels is not None else [ConsoleChannel()]
         self._min_severity = _SEVERITY_ORDER.get(min_severity, 0)

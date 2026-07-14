@@ -1,7 +1,3 @@
-"""Tests for OSNetReID against real torchreid and real pretrained OSNet
-weights, not mocked.
-"""
-
 import numpy as np
 
 from perception.reid import Gallery, OSNetReID, cosine_similarity

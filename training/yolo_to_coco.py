@@ -1,8 +1,3 @@
-"""Converts a YOLO-format dataset (images/{split}/*.jpg + labels/{split}/*.txt
-+ data.yaml) to COCO format (train/valid/test dirs, each with
-_annotations.coco.json) — what RF-DETR expects.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -14,9 +9,6 @@ import yaml
 
 
 def _read_yolo_labels(label_path: Path, img_w: int, img_h: int) -> list[dict]:
-    """YOLO format: `class_id cx cy w h`, all normalized 0..1. Converts to
-    COCO's `[x_min, y_min, width, height]` in absolute pixels.
-    """
     if not label_path.exists():
         return []
     boxes = []
@@ -33,10 +25,6 @@ def _read_yolo_labels(label_path: Path, img_w: int, img_h: int) -> list[dict]:
 
 
 def convert_split(images_dirs: Path | list[Path], labels_dirs: Path | list[Path], out_dir: Path, class_names: list[str]) -> int:
-    """`images_dirs`/`labels_dirs` may each be a single dir or a list of dirs.
-    All dirs in the list are merged into a single COCO split with unique
-    image ids across all of them.
-    """
     if isinstance(images_dirs, Path):
         images_dirs = [images_dirs]
     if isinstance(labels_dirs, Path):
@@ -84,11 +72,6 @@ def convert_split(images_dirs: Path | list[Path], labels_dirs: Path | list[Path]
 
 
 def convert_dataset(yolo_data_yaml: Path, out_dir: Path, dataset_root: Path | None = None) -> dict[str, int]:
-    """`dataset_root` overrides where `path:` in the yaml resolves relative
-    to. Pass `dataset_root=Path(DATASETS_DIR)` for auto-downloaded datasets
-    to resolve against the actual download location instead of the yaml's
-    own directory.
-    """
     yolo_data_yaml = Path(yolo_data_yaml)
     out_dir = Path(out_dir)
     config = yaml.safe_load(yolo_data_yaml.read_text())

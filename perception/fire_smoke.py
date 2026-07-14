@@ -1,12 +1,3 @@
-"""Fire/smoke detection.
-
-HSV color-range thresholding: fire (orange/yellow/red, high saturation)
-and grayish smoke (low saturation, mid brightness, low color variance),
-gated by a minimum pixel area. Will false-positive on fire-colored
-objects (traffic cones, sunsets); upgrade path is a trained detector
-behind the same FireSmokeDetector interface.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass

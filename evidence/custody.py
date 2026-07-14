@@ -1,10 +1,3 @@
-"""Chain-of-custody log.
-
-Every access to evidence (capture, view, export, anchor) gets an
-append-only, signed, hash-chained entry — altering or deleting a past
-entry breaks every entry after it.
-"""
-
 from __future__ import annotations
 
 import json
@@ -34,10 +27,6 @@ class CustodyEntry:
 
 
 class CustodyLog:
-    """Append-only log backed by SQLite. Each row's `entry_hash` covers its
-    own fields plus the previous row's `entry_hash`.
-    """
-
     def __init__(self, db_path: Path | None = None):
         self._db_path = db_path or (settings.data_dir / "custody_log.db")
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -122,9 +111,6 @@ class CustodyLog:
         return [CustodyEntry(**dict(r)) for r in rows]
 
     def verify_chain(self) -> bool:
-        """Walks the whole log, recomputing each entry's hash and checking it
-        matches both the stored hash and the next row's prev_entry_hash.
-        """
         entries = self.history()
         prev_hash = "0" * 64
         for entry in entries:

@@ -1,10 +1,3 @@
-"""Fine-tune RF-DETR.
-
-Usage:
-    pip install "rfdetr[train,loggers]"
-    python -m training.train_rfdetr --dataset-dir ./data/datasets/remote-home/coco --output-dir ./data/models/rfdetr
-"""
-
 from __future__ import annotations
 
 import argparse

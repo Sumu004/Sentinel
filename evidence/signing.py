@@ -1,9 +1,3 @@
-"""Sign-at-source evidence chain.
-
-Hashes and signs a clip the moment it's written, with a key that lives
-on this device, and writes a sidecar manifest.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -32,10 +26,6 @@ class Manifest:
 
 
 def _load_or_create_key() -> Ed25519PrivateKey:
-    """One key per device, generated on first run and reused after. Losing
-    this file breaks the ability to prove past evidence came from this
-    device — back it up like any other credential.
-    """
     key_path = settings.evidence_key_path
     if key_path.exists():
         return serialization.load_pem_private_key(key_path.read_bytes(), password=None)
@@ -61,9 +51,6 @@ def sha256_file(path: Path) -> str:
 
 
 def sign_clip(clip_path: Path) -> Manifest:
-    """Hash the clip, sign the hash with this device's key, write a sidecar
-    `<clip>.manifest.json`. Returns the manifest; raises if the clip is missing.
-    """
     if not clip_path.exists():
         raise FileNotFoundError(f"Cannot sign a clip that does not exist: {clip_path}")
 
@@ -90,9 +77,6 @@ def sign_clip(clip_path: Path) -> Manifest:
 
 
 def verify_clip(clip_path: Path) -> bool:
-    """Re-hash the clip and check it still matches the signed manifest — proves
-    the file hasn't been altered since signing.
-    """
     manifest_path = clip_path.with_suffix(clip_path.suffix + ".manifest.json")
     if not manifest_path.exists():
         raise FileNotFoundError(f"No manifest found for {clip_path}")

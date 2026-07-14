@@ -1,8 +1,3 @@
-"""Website-controlled pipeline start/stop. Starts the actual
-`python -m edge.main` subprocess — camera access is unauthorized in this
-environment, so it's expected to exit quickly with a camera error.
-"""
-
 import time
 
 from fastapi.testclient import TestClient

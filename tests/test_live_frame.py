@@ -1,7 +1,3 @@
-"""Live-tracking view: PUT /live-frame and GET /live-frame/stream (MJPEG).
-Hits the real FastAPI app via TestClient.
-"""
-
 from fastapi.testclient import TestClient
 
 from cloud.backend.app import app

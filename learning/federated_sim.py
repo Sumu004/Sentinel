@@ -1,16 +1,3 @@
-"""Federated learning in local simulation.
-
-Several virtual sites, each holding its own local data, train a shared
-model via FedAvg — only weight updates leave a site, never raw data.
-
-The task: false-alarm suppression. A small logistic-regression model
-learns "is this a real event or a false alarm" from 4 features (motion
-area, track duration, hour of day, known false-alarm zone).
-
-Plain NumPy, no torch/sklearn/Flower — implements the same
-weighted-average algorithm FedAvg performs directly.
-"""
-
 from __future__ import annotations
 
 import numpy as np
@@ -21,10 +8,6 @@ def _sigmoid(z: np.ndarray) -> np.ndarray:
 
 
 class TinyLogReg:
-    """4 features -> P(real event). Weights are exactly what a federated
-    round exchanges.
-    """
-
     n_features = 4
 
     def __init__(self):
@@ -72,25 +55,18 @@ def _sample_site(rng: np.random.Generator, site_shift: np.ndarray, n_samples: in
 
 
 def make_site_train_data(site_seed: int, n_train: int = 24) -> tuple[np.ndarray, np.ndarray]:
-    """A site's local training sample. Each site has a fixed environmental
-    shift (camera noise, foliage). n_train is deliberately small.
-    """
     rng = np.random.default_rng(site_seed)
     site_shift = rng.normal(0, 0.3, size=4)
     return _sample_site(rng, site_shift, n_train)
 
 
 def make_new_site_eval_data(seed: int, n_samples: int = 150) -> tuple[np.ndarray, np.ndarray]:
-    """A brand-new site's data, never seen by any training site."""
     rng = np.random.default_rng(seed)
     site_shift = rng.normal(0, 0.3, size=4)
     return _sample_site(rng, site_shift, n_samples)
 
 
 def federated_average(client_params: list[list[np.ndarray]], client_sizes: list[int]) -> list[np.ndarray]:
-    """FedAvg: weighted mean of each site's parameters, weighted by how much
-    local data that site trained on.
-    """
     total = sum(client_sizes)
     averaged = [np.zeros_like(p) for p in client_params[0]]
     for params, size in zip(client_params, client_sizes):
@@ -103,10 +79,6 @@ def federated_average(client_params: list[list[np.ndarray]], client_sizes: list[
 def run_federated_simulation(
     num_sites: int = 4, num_rounds: int = 8, n_train: int = 24, new_site_seed: int = 999
 ) -> dict:
-    """Trains a federated model across `num_sites` simulated sites (FedAvg,
-    in-process), then compares it against each site's own solo-trained
-    model, both evaluated on a brand-new, unseen site's data.
-    """
     site_train_data = [make_site_train_data(site_seed=i, n_train=n_train) for i in range(num_sites)]
     X_new, y_new = make_new_site_eval_data(seed=new_site_seed)
 

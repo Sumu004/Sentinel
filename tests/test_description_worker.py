@@ -1,7 +1,3 @@
-"""DescriptionWorker keeps slow VLM calls off the real-time frame loop.
-Uses a fake slow describer and a mocked HTTP PATCH.
-"""
-
 import time
 from unittest.mock import patch
 
@@ -24,10 +20,6 @@ def _event() -> Event:
 
 
 class _SlowFakeDescriber(Describer):
-    """Simulates a real VLM call's latency without actually being slow in
-    the test — proves the worker calls describe() off the calling thread.
-    """
-
     def __init__(self):
         self.calls = []
 

@@ -1,10 +1,3 @@
-"""Context engine.
-
-Knows the site's normal — schedules, expected vehicles, roles — so an
-alert only fires when reality contradicts expectation. Fully rule-based,
-no ML, no API.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -13,10 +6,6 @@ from datetime import datetime, time, timezone
 
 @dataclass(frozen=True)
 class ScheduleRule:
-    """Suppresses events matching a label during a recurring time window on
-    specific days. `days` uses Python's weekday() convention: 0=Monday.
-    """
-
     label: str
     days: tuple[int, ...]
     start: time
@@ -42,9 +31,6 @@ class ContextEngine:
         self.schedule_rules.append(rule)
 
     def should_suppress(self, label: str, when: datetime | None = None) -> tuple[bool, str]:
-        """Returns (suppressed, reason). An event matching a schedule rule is
-        expected, not a threat.
-        """
         when = when or datetime.now(timezone.utc)
         for rule in self.schedule_rules:
             if rule.matches(label, when):

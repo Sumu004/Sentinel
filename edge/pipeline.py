@@ -1,8 +1,3 @@
-"""Wires source -> detector -> tracker -> debounce -> record -> evidence -> cloud.
-
-Also sends a periodic heartbeat and retries queued outbox sends.
-"""
-
 from __future__ import annotations
 
 import dataclasses

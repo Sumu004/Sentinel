@@ -1,7 +1,3 @@
-"""QwenLocalDescriber calls a real Ollama server over HTTP. Tests mock
-requests.post.
-"""
-
 import base64
 from unittest.mock import MagicMock, patch
 

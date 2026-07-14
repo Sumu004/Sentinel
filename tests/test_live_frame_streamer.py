@@ -1,5 +1,3 @@
-"""LiveFrameStreamer must never block the frame loop. Mocks requests.put."""
-
 import time
 from unittest.mock import patch
 

@@ -1,9 +1,3 @@
-"""Turns persistent tracks into debounced events.
-
-A track becomes an Event once it has existed for
-SENTINEL_EVENT_MIN_DURATION_S (default 3s), and emits once per track.
-"""
-
 from __future__ import annotations
 
 import uuid
@@ -27,9 +21,6 @@ class Event:
 
 
 def debounce(tracks: list[Track]) -> list[Event]:
-    """Call once per frame with the current tracks. Returns newly-qualified
-    events and marks them emitted so they fire exactly once.
-    """
     new_events: list[Event] = []
     for track in tracks:
         if track.emitted:

@@ -1,9 +1,3 @@
-"""Clip recording with a pre-event ring buffer.
-
-Captures SENTINEL_PRE_EVENT_SECONDS before the event fired, plus
-SENTINEL_POST_EVENT_SECONDS after.
-"""
-
 from __future__ import annotations
 
 from collections import deque
@@ -26,7 +20,6 @@ class RingBufferRecorder:
         self._last_finished: Path | None = None
 
     def push_frame(self, frame: np.ndarray) -> None:
-        """Call once per frame, every frame, regardless of whether an event is active."""
         self._buffer.append(frame.copy())
         if self._writer is not None:
             self._writer.write(frame)
@@ -35,9 +28,6 @@ class RingBufferRecorder:
                 self._finish()
 
     def trigger(self, label: str) -> None:
-        """Call when an event fires. Flushes the pre-event buffer into a new clip
-        and keeps recording for SENTINEL_POST_EVENT_SECONDS more frames.
-        """
         if self._writer is not None:
             self._post_frames_needed = int(settings.capture_fps * settings.post_event_seconds)
             return
@@ -62,9 +52,6 @@ class RingBufferRecorder:
         self._writer_path = None
 
     def pop_finished_clip(self) -> Path | None:
-        """Returns the path of a just-completed clip exactly once, then None
-        until the next clip finishes.
-        """
         path, self._last_finished = self._last_finished, None
         return path
 

@@ -57,9 +57,6 @@ def test_convert_dataset_handles_background_images(tmp_path: Path):
 
 
 def _make_voc_shaped_dataset(root: Path) -> Path:
-    """Mirrors the real VOC.yaml shape: train is a list of dirs
-    (images/train2012 + images/train2007), not a single string path.
-    """
     for split in ["train2007", "train2012", "val2007"]:
         (root / "images" / split).mkdir(parents=True)
         (root / "labels" / split).mkdir(parents=True)
@@ -88,9 +85,6 @@ def _make_voc_shaped_dataset(root: Path) -> Path:
 
 
 def test_convert_dataset_accepts_string_out_dir(tmp_path: Path):
-    """Regression test: `convert_dataset` must normalize a plain string
-    `out_dir` to a Path.
-    """
     data_yaml = _make_voc_shaped_dataset(tmp_path / "voc_ds")
     out_dir_str = str(tmp_path / "coco_ds_str")
 
@@ -119,10 +113,6 @@ def test_convert_dataset_merges_list_of_dirs_like_real_voc_yaml(tmp_path: Path):
 
 
 def test_convert_dataset_resolves_relative_path_against_dataset_root_not_yaml_location(tmp_path: Path):
-    """Regression test: `dataset_root` must override where `path:` in the
-    yaml resolves relative to, regardless of where the yaml file itself
-    lives.
-    """
     dataset_root = tmp_path / "actual_datasets_dir"
     (dataset_root / "VOC" / "images" / "train2007").mkdir(parents=True)
     (dataset_root / "VOC" / "labels" / "train2007").mkdir(parents=True)

@@ -1,5 +1,3 @@
-"""Entry point: python -m edge.main [--no-preview]"""
-
 from __future__ import annotations
 
 import argparse
