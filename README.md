@@ -200,3 +200,12 @@ live footage**, with three separately-scored layers (code in
 - **System score** — end-to-end: right alert, right severity, sealed evidence, in time
 
 See [ROADMAP.md](ROADMAP.md) for the full phase breakdown.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Everything here runs free — no paid
+API keys or special hardware required to build and test.
+
+## License
+
+[MIT](LICENSE)
