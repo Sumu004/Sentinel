@@ -30,9 +30,8 @@ that defaults to the free path.
 - Keep them focused — one change, one PR.
 - Add or update a test for whatever you touched. If it can't be tested (needs
   real hardware, a paid API, etc.), say so in the PR description.
-- Match the existing code style: no inline comments unless something is
-  genuinely non-obvious (a workaround, a hidden constraint) — the code and
-  its docstring should speak for themselves otherwise.
+- Match the existing code style: no comments, no docstrings — keep names
+  and code clear enough to not need them.
 - Run `python -m pytest tests/ -v` before pushing. All green, or explain why not.
 
 ## Reporting bugs
