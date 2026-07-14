@@ -1,32 +1,14 @@
-"""Federated learning in local simulation (DECISIONS.md D7, ROADMAP.md Phase 2.6).
+"""Federated learning in local simulation.
 
-Proves the federated-learning code path before a real multi-site fleet
-exists: several virtual "sites", each holding its own local, never-shared
-data, train a shared model via FedAvg. No raw data ever leaves a simulated
-site — only model weight updates do, which is the whole privacy point of D7.
+Several virtual sites, each holding its own local data, train a shared
+model via FedAvg — only weight updates leave a site, never raw data.
 
-The task is tied to a real Sentinel problem: **false-alarm suppression**.
-Each site has its own environment (different cameras, more or less foliage,
-different traffic patterns), so a real event's feature profile looks a
-little different per site. A tiny logistic-regression model learns "is this
-a real event or a false alarm" from 4 features (motion area, track duration,
-hour of day, whether it's a known false-alarm zone).
+The task: false-alarm suppression. A small logistic-regression model
+learns "is this a real event or a false alarm" from 4 features (motion
+area, track duration, hour of day, known false-alarm zone).
 
-**The comparison that actually matters, verified empirically this session:**
-does the federated model generalize better to a *brand-new, never-before-seen
-site* than a randomly-picked existing site's own solo-trained model? That is
-the real deployment scenario (D7: "a new customer's site with zero history")
-— not whether federation beats a site's *own* solo model on its *own*
-distribution, which turned out NOT to hold up across seeds when tested (see
-"what was tried and rejected" below).
-
-Deliberately plain NumPy (no torch/sklearn/Flower ClientApp) — Flower
-(`flwr`) and Ray were installed and verified importable this session, but
-wiring the actual FedAvg math into Flower's newer ClientApp/ServerApp
-Message-based simulation API is nontrivial to get right without dedicated
-time; this module implements the identical algorithm FedAvg performs
-(weighted parameter averaging) directly, which is what's actually being
-proven — the federation *behavior*, not a specific library's plumbing.
+Plain NumPy, no torch/sklearn/Flower — implements the same
+weighted-average algorithm FedAvg performs directly.
 """
 
 from __future__ import annotations
@@ -40,8 +22,7 @@ def _sigmoid(z: np.ndarray) -> np.ndarray:
 
 class TinyLogReg:
     """4 features -> P(real event). Weights are exactly what a federated
-    round exchanges — small enough to make the aggregation trivial to reason
-    about and verify by hand.
+    round exchanges.
     """
 
     n_features = 4
@@ -91,10 +72,8 @@ def _sample_site(rng: np.random.Generator, site_shift: np.ndarray, n_samples: in
 
 
 def make_site_train_data(site_seed: int, n_train: int = 24) -> tuple[np.ndarray, np.ndarray]:
-    """A site's local training sample — each site has a fixed environmental
-    shift (different camera noise, different foliage). n_train is
-    deliberately small: a realistic amount of local history for a site that
-    hasn't been running long.
+    """A site's local training sample. Each site has a fixed environmental
+    shift (camera noise, foliage). n_train is deliberately small.
     """
     rng = np.random.default_rng(site_seed)
     site_shift = rng.normal(0, 0.3, size=4)
@@ -102,10 +81,7 @@ def make_site_train_data(site_seed: int, n_train: int = 24) -> tuple[np.ndarray,
 
 
 def make_new_site_eval_data(seed: int, n_samples: int = 150) -> tuple[np.ndarray, np.ndarray]:
-    """A brand-new site's data — never seen by any training site. This is
-    what "does federation help a new deployment" actually means: no model
-    has ever seen this exact environmental shift before.
-    """
+    """A brand-new site's data, never seen by any training site."""
     rng = np.random.default_rng(seed)
     site_shift = rng.normal(0, 0.3, size=4)
     return _sample_site(rng, site_shift, n_samples)
@@ -113,8 +89,7 @@ def make_new_site_eval_data(seed: int, n_samples: int = 150) -> tuple[np.ndarray
 
 def federated_average(client_params: list[list[np.ndarray]], client_sizes: list[int]) -> list[np.ndarray]:
     """FedAvg: weighted mean of each site's parameters, weighted by how much
-    local data that site trained on — the actual aggregation Flower's FedAvg
-    strategy performs.
+    local data that site trained on.
     """
     total = sum(client_sizes)
     averaged = [np.zeros_like(p) for p in client_params[0]]
@@ -129,12 +104,8 @@ def run_federated_simulation(
     num_sites: int = 4, num_rounds: int = 8, n_train: int = 24, new_site_seed: int = 999
 ) -> dict:
     """Trains a federated model across `num_sites` simulated sites (FedAvg,
-    in-process — no network needed for this synthetic demonstration), then
-    compares it against each site's own solo-trained model, both evaluated on
-    a *brand-new, unseen* site's data. This is the real question D7 answers:
-    does a new deployment benefit from the fleet's federated model, versus
-    having nothing better than one arbitrary existing site's idiosyncratic
-    model?
+    in-process), then compares it against each site's own solo-trained
+    model, both evaluated on a brand-new, unseen site's data.
     """
     site_train_data = [make_site_train_data(site_seed=i, n_train=n_train) for i in range(num_sites)]
     X_new, y_new = make_new_site_eval_data(seed=new_site_seed)

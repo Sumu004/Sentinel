@@ -1,14 +1,7 @@
-"""Event storage — pluggable backend (DECISIONS.md D8).
+"""Event storage, pluggable backend.
 
-SQLiteStore is the default: free, zero setup, file-based. DynamoDBStore targets
-the same interface for when a real deployment needs it (Lambda + DynamoDB are
-always-free at dev scale per D8 — keep them; it's API Gateway that gets
-replaced by this very FastAPI app). Swapping backend is one env var
-(SENTINEL_STORAGE_BACKEND), not a rewrite of app.py.
-
-This also fixes the original lambda_function.py inefficiency: that code ran
-`table.scan()` twice per invocation. SQLiteStore uses an indexed query; the
-DynamoDB stub documents the GSI a real deployment needs instead of a scan.
+SQLiteStore is the default (file-based, zero setup). DynamoDBStore targets
+the same interface for a real deployment. Swap via SENTINEL_STORAGE_BACKEND.
 """
 
 from __future__ import annotations
@@ -42,7 +35,7 @@ class EventStore(Protocol):
 
 
 class SQLiteStore:
-    """Default store. Free, no server process, no account — see DECISIONS.md D8."""
+    """Default store. Free, no server process, no account."""
 
     def __init__(self, db_path=None):
         self._db_path = db_path or settings.db_path
@@ -85,10 +78,9 @@ class SQLiteStore:
             )
 
     def _migrate_events_columns(self, conn: sqlite3.Connection) -> None:
-        """`CREATE TABLE IF NOT EXISTS` silently no-ops on a pre-existing
-        database — a DB created before org_id/description/severity were added
-        to the schema keeps its old columns forever unless we add them here.
-        Runs on every startup; each ALTER is a no-op once the column exists.
+        """Adds any schema columns missing from a pre-existing database.
+        `CREATE TABLE IF NOT EXISTS` no-ops on an existing table, so this runs
+        on every startup; each ALTER is a no-op once the column exists.
         """
         existing = {row["name"] for row in conn.execute("PRAGMA table_info(events)").fetchall()}
         migrations = {
@@ -109,11 +101,7 @@ class SQLiteStore:
             )
 
     def site_statuses(self, silent_threshold_s: float) -> list[dict]:
-        """A site with no heartbeat within the threshold is flagged `silent` —
-        VISION.md's "silence is an alarm": camera unplugged, tampered, or
-        powered off all look identical to the backend, and all three deserve
-        the same alert.
-        """
+        """A site with no heartbeat within the threshold is flagged `silent`."""
         now = datetime.now(timezone.utc)
         with self._connect() as conn:
             rows = conn.execute("SELECT * FROM heartbeats").fetchall()
@@ -185,11 +173,8 @@ class SQLiteStore:
             return cur.rowcount > 0
 
     def update_description(self, event_id: str, description: str, severity: str) -> bool:
-        """Backs the async enrichment path (edge/description_worker.py): an
-        event is created immediately with a fast template description so
-        alerting stays real-time, then a slower VLM description (seconds,
-        not milliseconds) arrives later and patches this same row instead of
-        blocking the frame loop.
+        """Patches a slower, richer description onto an event row created earlier
+        with a fast template description.
         """
         with self._connect() as conn:
             cur = conn.execute(
@@ -200,11 +185,8 @@ class SQLiteStore:
 
 
 class DynamoDBStore:
-    """Phase-2.5 target. Lambda + DynamoDB are always-free at dev scale (D8) —
-    this is here so the swap from SQLiteStore is mechanical once a real
-    multi-site deployment exists. Requires a table with `event_id` as the
-    partition key and a GSI on `assigned` (avoids the original code's full
-    table.scan() on every poll).
+    """DynamoDBStore. Requires a table with `event_id` as the partition key
+    and a GSI on `assigned`.
     """
 
     def __init__(self, table_name: str | None = None, region: str | None = None):

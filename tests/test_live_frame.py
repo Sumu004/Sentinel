@@ -1,7 +1,5 @@
-"""Live-tracking view: edge/live_frame_streamer.py pushes annotated frames to
-PUT /live-frame, and the dashboard's <img> consumes GET /live-frame/stream
-(MJPEG). These tests hit the real FastAPI app via TestClient — no mocking of
-the endpoints themselves, just real requests against the real routes.
+"""Live-tracking view: PUT /live-frame and GET /live-frame/stream (MJPEG).
+Hits the real FastAPI app via TestClient.
 """
 
 from fastapi.testclient import TestClient

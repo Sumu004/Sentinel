@@ -1,9 +1,5 @@
-"""DescriptionWorker exists to keep slow VLM calls off the real-time frame
-loop (edge/pipeline.py) — see edge/description_worker.py's module docstring
-for why (a real Qwen2.5-VL call via Ollama took ~11s in testing; inline in
-the frame loop that would stall tracking for hundreds of frames per event).
-These tests use a fake slow describer and a mocked HTTP PATCH call so they
-stay fast, deterministic unit tests.
+"""DescriptionWorker keeps slow VLM calls off the real-time frame loop.
+Uses a fake slow describer and a mocked HTTP PATCH.
 """
 
 import time

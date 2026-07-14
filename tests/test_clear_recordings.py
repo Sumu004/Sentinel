@@ -1,9 +1,5 @@
-"""POST /recordings/clear deletes real clip files from settings.clips_dir and
-clears the pipeline log buffer — but must never touch the events DB or
-evidence/custody.py's chain-of-custody log (that's the tamper-evident
-integrity record, not disposable UI state). Uses a real temp directory and
-real files, not mocks, since this is exactly the kind of destructive-action
-endpoint that needs to prove it deletes precisely what it claims to.
+"""POST /recordings/clear deletes clip files and clears the log buffer,
+but must never touch the events DB or the chain-of-custody log.
 """
 
 from fastapi.testclient import TestClient

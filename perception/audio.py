@@ -1,16 +1,8 @@
-"""Audio (VISION.md L1 row: "audio" — glass break, gunshot, raised voices).
+"""Audio — loud-sound detection.
 
-Honest limit, stated up front: there is no free way to *classify* sound
-events (glass break vs. gunshot vs. shouting) without either a paid API or a
-labelled audio dataset to train on — neither exists for this project yet, the
-same gap `training/README.md` documents for `package` images. Rather than
-fake a classifier, this ships what *is* real and free: an RMS-energy-based
-loud-sound detector. It answers "something loud just happened" — a real,
-useful signal (a loud crash/bang worth flagging) — not "what kind of sound."
-
-Upgrade path: swap `RMSLoudSoundDetector` for a trained classifier (e.g. a
-small CNN over mel-spectrograms, once real site audio exists to label) behind
-the same `AudioEventDetector` interface.
+An RMS-energy-based detector: answers "something loud just happened",
+not "what kind of sound". Upgrade path: a trained classifier over
+mel-spectrograms behind the same AudioEventDetector interface.
 """
 
 from __future__ import annotations
@@ -33,9 +25,9 @@ class AudioEventDetector:
 
 @dataclass
 class RMSLoudSoundDetector(AudioEventDetector):
-    """Free, real, no model weights. `threshold` is on RMS amplitude of
-    normalized float32 samples in [-1, 1] — a sudden bang/crash/shout pushes
-    RMS well above steady ambient noise.
+    """`threshold` is on RMS amplitude of normalized float32 samples in
+    [-1, 1] — a sudden bang/crash/shout pushes RMS well above steady
+    ambient noise.
     """
 
     threshold: float = 0.2

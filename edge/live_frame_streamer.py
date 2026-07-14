@@ -1,11 +1,7 @@
-"""Streams the annotated (detection-boxes-drawn) frame to the backend's
-dashboard, on its own thread — same reasoning as edge/description_worker.py:
-`_process_frame` must never block on network I/O, so this holds only the
-single most recent frame (no queue/backlog) and a background thread pushes it
-to `PUT /live-frame` at its own pace, independent of the camera's frame rate.
+"""Streams the annotated frame to the dashboard on a background thread.
 
-If a push is slow or fails, the next `update()` from the frame loop is still
-O(1) (just replaces a reference) — the frame loop is never affected either way.
+Holds only the single most recent frame (no queue) and pushes it to
+PUT /live-frame at its own pace, independent of the camera's frame rate.
 """
 
 from __future__ import annotations

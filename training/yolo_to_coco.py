@@ -1,11 +1,6 @@
 """Converts a YOLO-format dataset (images/{split}/*.jpg + labels/{split}/*.txt
 + data.yaml) to COCO format (train/valid/test dirs, each with
-_annotations.coco.json) — what RF-DETR expects (training/README.md).
-
-Built specifically to complete the D1 bake-off: Ultralytics' `data=VOC.yaml`
-auto-download only gives YOLO-format labels, so without this conversion
-RF-DETR never got a real two-way comparison against YOLO12 on the same data
-in colab_finetune.ipynb.
+_annotations.coco.json) — what RF-DETR expects.
 """
 
 from __future__ import annotations
@@ -38,11 +33,9 @@ def _read_yolo_labels(label_path: Path, img_w: int, img_h: int) -> list[dict]:
 
 
 def convert_split(images_dirs: Path | list[Path], labels_dirs: Path | list[Path], out_dir: Path, class_names: list[str]) -> int:
-    """`images_dirs`/`labels_dirs` may each be a single dir or a list of dirs —
-    Ultralytics' own VOC.yaml documents train/val/test as "1) dir, 2) file, or
-    3) list" (e.g. VOC's train merges images/train2012, images/train2007,
-    images/val2012, images/val2007 into one split). All dirs in the list are
-    merged into a single COCO split with unique image ids across all of them.
+    """`images_dirs`/`labels_dirs` may each be a single dir or a list of dirs.
+    All dirs in the list are merged into a single COCO split with unique
+    image ids across all of them.
     """
     if isinstance(images_dirs, Path):
         images_dirs = [images_dirs]
@@ -92,17 +85,9 @@ def convert_split(images_dirs: Path | list[Path], labels_dirs: Path | list[Path]
 
 def convert_dataset(yolo_data_yaml: Path, out_dir: Path, dataset_root: Path | None = None) -> dict[str, int]:
     """`dataset_root` overrides where `path:` in the yaml resolves relative
-    to. Normally that's the yaml's own directory (true for Roboflow exports,
-    where data.yaml sits right next to images/labels). It is NOT true for
-    Ultralytics' auto-downloaded datasets (e.g. VOC): when the yaml isn't
-    copied alongside the download, code falls back to the copy bundled
-    inside the `ultralytics` package itself — resolving `path: VOC` relative
-    to *that* file's folder points at a directory that was never created,
-    silently producing `images_dirs = []` for every split (looks like an
-    empty/successful conversion: `counts == {}`, not an error, until the next
-    cell that assumes a populated `valid/` dir fails). Pass `dataset_root=
-    Path(DATASETS_DIR)` for auto-downloaded datasets to resolve against the
-    actual download location instead of the yaml's location.
+    to. Pass `dataset_root=Path(DATASETS_DIR)` for auto-downloaded datasets
+    to resolve against the actual download location instead of the yaml's
+    own directory.
     """
     yolo_data_yaml = Path(yolo_data_yaml)
     out_dir = Path(out_dir)

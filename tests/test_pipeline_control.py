@@ -1,10 +1,6 @@
-"""Website-controlled pipeline start/stop: a dashboard button spawns the real
-`python -m edge.main` subprocess instead of requiring a manual terminal
-command. This test starts the *actual* subprocess (not mocked) — in this
-sandboxed test environment, camera access is unauthorized, so the process
-is expected to exit quickly with a clear camera error. That's exactly the
-real-world scenario /pipeline/logs exists to surface, so asserting on it
-here doubles as a genuine integration check of the whole start→fail→log path.
+"""Website-controlled pipeline start/stop. Starts the actual
+`python -m edge.main` subprocess — camera access is unauthorized in this
+environment, so it's expected to exit quickly with a camera error.
 """
 
 import time

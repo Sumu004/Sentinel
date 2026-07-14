@@ -1,11 +1,5 @@
-"""Notification engine (DECISIONS.md D8, VISION.md L6 "notification is the
-product"). Pluggable channels behind one interface — a real, free default
-(console/log) plus stubs for the paid channels (SMS, push, webhook) that need
-credentials this environment doesn't have.
-
-For an unattended site there's no operator watching a wall of monitors — the
-alert *is* the value delivered, so this interface exists even before a real
-SMS/push provider is wired up: it's what every future channel plugs into.
+"""Notification channels behind one interface — console/log by default,
+plus stubs for SMS, push, and webhook.
 """
 
 from __future__ import annotations
@@ -33,10 +27,7 @@ class NotificationChannel:
 
 
 class ConsoleChannel(NotificationChannel):
-    """Free, always works, zero setup — logs the alert. This is the real
-    default channel today; SMS/push/webhook are documented interfaces for
-    when real provider credentials exist, not simulated here.
-    """
+    """Logs the alert. Free, zero setup — the real default channel."""
 
     def send(self, payload: NotificationPayload) -> bool:
         logger.warning(
@@ -47,8 +38,7 @@ class ConsoleChannel(NotificationChannel):
 
 class WebhookChannel(NotificationChannel):
     """Posts the alert to any URL the user configures — Slack, Discord,
-    Teams, or a custom endpoint. Free (no vendor account needed on Sentinel's
-    side) but requires the user to already have a webhook URL to send to.
+    Teams, or a custom endpoint.
     """
 
     def __init__(self, url: str):
@@ -76,8 +66,8 @@ class WebhookChannel(NotificationChannel):
 
 
 class SMSChannel(NotificationChannel):
-    """Phase 2.5 target — requires a paid SMS provider (Twilio et al.). Not
-    wired up: needs an account and credentials only the user can provide.
+    """Requires a paid SMS provider (Twilio et al.). Not wired up: needs an
+    account and credentials only the user can provide.
     """
 
     def __init__(self, api_key: str | None = None):
@@ -90,10 +80,8 @@ class SMSChannel(NotificationChannel):
 
 
 class NotificationEngine:
-    """Routes to every configured channel; a channel failing doesn't block
-    the others. Escalation policy (severity routing, cooldowns to prevent
-    alert fatigue) is a natural next layer on top of this — this is the
-    dispatch mechanism it would sit on.
+    """Routes to every configured channel; one channel failing doesn't block
+    the others.
     """
 
     def __init__(self, channels: list[NotificationChannel] | None = None, min_severity: str = "low"):

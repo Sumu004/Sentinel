@@ -68,9 +68,7 @@ def test_sqlite_store_update_description_returns_false_for_missing_event(tmp_pat
 
 def test_sqlite_store_migrates_pre_existing_db_missing_new_columns(tmp_path: Path):
     """Regression test: a DB created before org_id/description/severity were
-    added to the schema must not crash on startup — CREATE TABLE IF NOT
-    EXISTS silently no-ops on an existing table, so without an explicit
-    migration these columns never appear and the org_id index creation fails.
+    added to the schema must not crash on startup.
     """
     db_path = tmp_path / "legacy.db"
     conn = sqlite3.connect(db_path)

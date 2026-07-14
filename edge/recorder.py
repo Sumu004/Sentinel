@@ -1,11 +1,7 @@
 """Clip recording with a pre-event ring buffer.
 
-Captures SENTINEL_PRE_EVENT_SECONDS *before* the event fired (the moment that
-makes a clip actually useful as evidence — without it you only see the
-aftermath) plus SENTINEL_POST_EVENT_SECONDS after. This is a minimal version of
-the full ring buffer planned for Phase 2.3 (which adds store-and-forward and
-survives power/network loss); the in-memory deque here is enough to produce
-real evidence files today.
+Captures SENTINEL_PRE_EVENT_SECONDS before the event fired, plus
+SENTINEL_POST_EVENT_SECONDS after.
 """
 
 from __future__ import annotations

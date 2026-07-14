@@ -1,8 +1,4 @@
-"""LiveFrameStreamer must never block the frame loop — update() is O(1), and
-the actual HTTP push happens on its own thread at its own pace. Mocks
-requests.put (same pattern as the Ollama/DynamoDB tests) so this stays a
-fast, offline unit test.
-"""
+"""LiveFrameStreamer must never block the frame loop. Mocks requests.put."""
 
 import time
 from unittest.mock import patch

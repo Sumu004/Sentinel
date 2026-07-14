@@ -1,19 +1,10 @@
-"""Fire/smoke (VISION.md L1 row: "fire/smoke").
+"""Fire/smoke detection.
 
-Same honest-limit shape as `audio.py`: a real trained fire/smoke detector
-needs a labelled dataset (fire has good public datasets, unlike `package` —
-but none is wired up yet since it wasn't part of D1's scope). This ships a
-real, free, zero-download heuristic instead: HSV color-range thresholding
-for fire (orange/yellow/red, high saturation) and grayish smoke (low
-saturation, mid brightness, low color variance), gated by a minimum pixel
-area so noise doesn't trigger it.
-
-This is a legitimate, commonly-used pre-deep-learning technique — not a
-placeholder — but it will false-positive on fire-colored objects (orange
-traffic cones, sunset reflections) and miss fires outside its color/lighting
-assumptions. Upgrade path: swap for a trained detector (e.g. fine-tuned
-YOLO on a public fire/smoke dataset) behind the same `FireSmokeDetector`
-interface once that's prioritized.
+HSV color-range thresholding: fire (orange/yellow/red, high saturation)
+and grayish smoke (low saturation, mid brightness, low color variance),
+gated by a minimum pixel area. Will false-positive on fire-colored
+objects (traffic cones, sunsets); upgrade path is a trained detector
+behind the same FireSmokeDetector interface.
 """
 
 from __future__ import annotations

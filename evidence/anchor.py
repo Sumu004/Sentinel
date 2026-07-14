@@ -1,14 +1,8 @@
-"""Public timestamp anchoring via OpenTimestamps (DECISIONS.md D6).
+"""Public timestamp anchoring via OpenTimestamps.
 
-Free forever, no account, no API key — calls public Bitcoin-calendar servers.
-This is the one piece of the evidence chain that needed no free substitute
-(D8): it was already free, so this is the real target implementation, not a
-stand-in. Requires the `ots` CLI (`pip install opentimestamps-client`).
-
-Deliberately optional (SENTINEL_ANCHOR_ENABLED) — signing/hashing (signing.py)
-already gives local tamper-evidence; anchoring adds an independent, external
-proof of *when*, which matters for court/insurance use but isn't needed to
-develop the rest of the pipeline.
+Calls public Bitcoin-calendar servers — free, no account, no API key.
+Requires the `ots` CLI (`pip install opentimestamps-client`). Optional,
+gated behind SENTINEL_ANCHOR_ENABLED.
 """
 
 from __future__ import annotations
@@ -27,8 +21,8 @@ class AnchorError(RuntimeError):
 def anchor_file(path: Path) -> Path:
     """Stamp `path` with OpenTimestamps, producing a `<path>.ots` proof file.
 
-    Confirmation isn't immediate — Bitcoin anchoring takes time to confirm.
-    Use `ots upgrade <file>.ots` later to attach the completed Bitcoin proof.
+    Confirmation isn't immediate — use `ots upgrade <file>.ots` later to
+    attach the completed Bitcoin proof.
     """
     if not settings.anchor_enabled:
         raise AnchorError("Anchoring is disabled (SENTINEL_ANCHOR_ENABLED=false).")

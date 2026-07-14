@@ -1,14 +1,6 @@
 """Wires source -> detector -> tracker -> debounce -> record -> evidence -> cloud.
 
-This is the fix for the original MVP's main.py, which referenced an undefined
-`object1` variable and crashed on the first detection (NameError) — see
-ROADMAP.md Phase 0. Every stage here is the pluggable interface its DECISIONS.md
-entry describes, so Phase 2.1 swaps the detector/tracker without touching this
-file's structure.
-
-Phase 2.3 adds edge resilience: failed cloud sends queue in edge/outbox.py and
-retry periodically instead of being dropped, and a heartbeat tells the backend
-this site is alive — see cloud/backend/app.py's /heartbeat and /sites/status.
+Also sends a periodic heartbeat and retries queued outbox sends.
 """
 
 from __future__ import annotations

@@ -1,8 +1,4 @@
-"""Central config — every value is env-driven so no path/key/table name is hardcoded.
-
-Loophole this closes: the original MVP hardcoded 'models/your-model-for-detection',
-'CrimeVideo-Hash' (duplicated in two files), and a literal 'Replace with your API URL'.
-"""
+"""Central config. Every value is env-driven — no path/key/table name is hardcoded."""
 
 from __future__ import annotations
 

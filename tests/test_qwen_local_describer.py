@@ -1,8 +1,5 @@
-"""QwenLocalDescriber calls a real Ollama server over HTTP — these tests mock
-`requests.post` (same pattern as tests/test_dynamodb_store.py mocking
-boto3) so they stay free, offline unit tests. A real end-to-end check
-against an actually-running Ollama server happens separately, not in the
-test suite, since it needs a multi-GB model pulled and a running process.
+"""QwenLocalDescriber calls a real Ollama server over HTTP. Tests mock
+requests.post.
 """
 
 import base64

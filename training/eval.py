@@ -1,12 +1,8 @@
-"""Bake-off evaluation (DECISIONS.md D1, training/README.md methodology).
+"""Bake-off evaluation.
 
-Two parts:
-1. Held-out mAP — delegates to each library's own validator, runs today.
-2. False-alarms-per-camera-per-day — the metric that actually matters for an
-   unattended site. This needs hours of real, event-free footage from a
-   deployed camera, which doesn't exist yet — `count_false_alarms` is a real,
-   runnable function, but it's only as good as the footage you point it at.
-   Wire it up once the Phase 2.0 pipeline has been recording for a few days.
+Held-out mAP delegates to each library's own validator.
+false-alarms-per-camera-per-day needs real, event-free footage from a
+deployed camera.
 """
 
 from __future__ import annotations
@@ -39,11 +35,9 @@ def eval_rfdetr(checkpoint: Path, dataset_dir: Path) -> dict:
 def count_false_alarms(detector: Detector, footage_path: Path, hours_of_footage: float) -> float:
     """Runs `detector` over event-free footage and returns alarms/camera/day.
 
-    `footage_path` should be a video known to contain *no* real events — its
-    only purpose is measuring the spurious-detection rate. Reuses the exact
-    tracker/debounce path from the live pipeline (edge/tracker.py,
-    edge/events.py) so the number reflects what would actually alert someone,
-    not raw per-frame false positives.
+    `footage_path` should contain no real events. Reuses the tracker/debounce
+    path from the live pipeline so the number reflects what would actually
+    alert someone.
     """
     import cv2
 

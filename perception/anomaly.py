@@ -1,18 +1,7 @@
-"""Anomaly detection (VISION.md L1 row: "anomaly").
+"""Anomaly detection.
 
-No trained anomaly model exists (or reasonably could, for free, without a
-site's own history to learn "normal" from). This ships a real statistical
-baseline instead: per-label running mean/std of track speed and duration,
-flagging a track as anomalous when it deviates past a z-score threshold
-(e.g. someone moving far faster than any person this camera has seen, or
-lingering far longer than typical). It's the same "silence is a signal"
-philosophy as `cloud/backend/db.py site_statuses()` applied to behavior
-instead of connectivity.
-
-Upgrade path: once a site has enough real history, replace the per-label
-Gaussian assumption with a learned per-camera model (e.g. an autoencoder over
-track feature vectors) — the interface (`AnomalyDetector.score`) doesn't need
-to change shape.
+Per-label running mean/std of track speed and duration; flags a track
+as anomalous when it deviates past a z-score threshold.
 """
 
 from __future__ import annotations
@@ -51,10 +40,8 @@ class AnomalyDetector:
 
 @dataclass
 class StatisticalAnomalyDetector(AnomalyDetector):
-    """Free, real, per-label baseline. Needs a warm-up period (`min_samples`)
-    before it can flag anything — with too little history, everything looks
-    "normal" by definition, so it correctly declines to judge rather than
-    guessing.
+    """Per-label baseline. Needs a warm-up period (`min_samples`) before it
+    can flag anything.
     """
 
     z_threshold: float = 3.0

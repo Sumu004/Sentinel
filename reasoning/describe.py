@@ -1,23 +1,14 @@
-"""Event description (DECISIONS.md D4, VISION.md L2 "understands the place").
+"""Event description.
 
 Three backends behind one interface (SENTINEL_VLM_BACKEND):
 
-- "template" (default, free, always works) — a deterministic, rule-based
-  description from the event's own fields (label, duration, time of day,
-  context-engine suppression reason if any). No download, no API key, no
-  GPU. This is genuinely what ships today.
-- "qwen-local" — Qwen2.5-VL running locally via Ollama (D4). Real, wired up:
-  sends the actual event frame to a local Ollama server's /api/generate,
-  asking for a one-sentence scene description, and falls back to raising
-  clearly if the server/model isn't reachable rather than silently
-  degrading to a fake result.
-- "frontier" — a hosted VLM (Claude/GPT-4o-class) for the escalation tier
-  (D4). Requires an API key and is a paid, consent-gated action — not
-  something this module will call on its own.
+- "template" (default) — deterministic, rule-based description from the
+  event's own fields.
+- "qwen-local" — Qwen2.5-VL via a local Ollama server.
+- "frontier" — a hosted VLM (Claude/GPT-4o-class) for the escalation
+  tier; requires an API key, not called automatically.
 
-`Describer.describe()` takes an optional `frame` — template/frontier ignore
-it (frontier isn't wired up at all yet), qwen-local requires it since a VLM
-with no image is just a worse template describer.
+`Describer.describe()` takes an optional frame — qwen-local requires it.
 """
 
 from __future__ import annotations
@@ -61,8 +52,7 @@ _SEVERITY_BY_LABEL = {
 
 
 class TemplateDescriber(Describer):
-    """Free, deterministic, no dependencies. Real for today's pipeline —
-    not a placeholder for a VLM, a genuine rule-based description generator
+    """Deterministic, no dependencies — a rule-based description generator
     that works with zero setup.
     """
 
@@ -83,14 +73,9 @@ class TemplateDescriber(Describer):
 
 
 def _encode_frame_jpeg_base64(frame: np.ndarray, max_dim: int = 512) -> str:
-    """Downscales before encoding — this is the single biggest lever on VLM
-    latency. Qwen2-VL-family models use a dynamic-resolution vision encoder:
-    more input pixels means more visual tokens, which costs prefill time
-    *and* extends every later decode step. A 1080p webcam frame carries far
-    more resolution than a one-sentence description needs; capping the
-    longer side at 512px cuts visual tokens substantially with no visible
-    loss for "what's in this scene" description tasks (verified: description
-    quality on the same test image was unaffected after this change).
+    """Downscales before encoding — the biggest lever on VLM latency. Capping
+    the longer side at 512px cuts visual tokens substantially with no
+    visible loss for scene-description tasks.
     """
     h, w = frame.shape[:2]
     if max(h, w) > max_dim:
@@ -103,11 +88,9 @@ def _encode_frame_jpeg_base64(frame: np.ndarray, max_dim: int = 512) -> str:
 
 
 class QwenLocalDescriber(Describer):
-    """Real Qwen2.5-VL inference via a local Ollama server (DECISIONS.md D4).
-    Requires `ollama serve` running with the model pulled
-    (`ollama pull qwen2.5vl:3b`) — see training/README.md-style setup notes
-    in PROJECT_STATUS.md. Raises clearly if the server/model isn't reachable
-    rather than silently falling back to a fake result.
+    """Qwen2.5-VL inference via a local Ollama server. Requires `ollama serve`
+    running with the model pulled (`ollama pull qwen2.5vl:3b`). Raises
+    clearly if the server/model isn't reachable.
     """
 
     def __init__(self, endpoint: str | None = None, model: str | None = None, timeout_s: float = 60.0):
@@ -160,8 +143,8 @@ class QwenLocalDescriber(Describer):
 
 
 class FrontierDescriber(Describer):
-    """Phase 2.4 escalation tier — a hosted frontier VLM. Requires an API key
-    and is a paid, consent-gated action; never called automatically.
+    """A hosted frontier VLM. Requires an API key and is a paid,
+    consent-gated action; never called automatically.
     """
 
     def __init__(self, api_key: str | None = None):

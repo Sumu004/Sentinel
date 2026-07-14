@@ -1,10 +1,7 @@
-"""Fine-tune YOLO12 (DECISIONS.md D1). Confirmed-working call shape — see
-training/README.md "What's been tested" for the verified smoke run.
+"""Fine-tune YOLO12.
 
-Defaults to the pretrained checkpoint (yolo12s.pt), not the bare architecture
-(.yaml) — the smoke test used .yaml only to skip a weight download while
-verifying the training loop. Real fine-tuning should transfer from COCO
-weights, same as RF-DETR does by default.
+Defaults to the pretrained checkpoint (yolo12s.pt), not the bare
+architecture.
 
 Usage:
     pip install ultralytics

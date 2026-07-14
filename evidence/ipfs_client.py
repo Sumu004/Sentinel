@@ -1,14 +1,7 @@
-"""IPFS upload — fixes the two bugs in the original MVP's ipfs_convertion.py:
+"""IPFS upload.
 
-1. `cid` was only assigned inside the `try` block, so a failed `ipfs add` raised
-   UnboundLocalError on `return cid` instead of a clear failure.
-2. The function built an unused HTTP POST (`files`, `url` to the local IPFS API)
-   that was never sent — the CLI subprocess call was used instead. Dead code,
-   removed; this version commits to the HTTP API call, which doesn't require the
-   `ipfs` binary to be on PATH (only the daemon, which IPFS Desktop already runs).
-
-Free by construction (DECISIONS.md D8) — a local `ipfs daemon` costs nothing.
-Gated behind SENTINEL_IPFS_ENABLED so the pipeline runs without it installed.
+Gated behind SENTINEL_IPFS_ENABLED so the pipeline runs without it
+installed. Requires a local `ipfs daemon`.
 """
 
 from __future__ import annotations

@@ -1,5 +1,4 @@
-"""Fine-tune RF-DETR (DECISIONS.md D1). Confirmed-working call shape — see
-training/README.md "What's been tested" for the verified smoke run.
+"""Fine-tune RF-DETR.
 
 Usage:
     pip install "rfdetr[train,loggers]"

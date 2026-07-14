@@ -1,11 +1,8 @@
-"""Chain-of-custody log (DECISIONS.md D5/D6).
+"""Chain-of-custody log.
 
-Every access to evidence — capture, view, export, anchor — gets an append-only,
-signed, hash-chained entry. Each entry embeds the hash of the previous entry,
-so altering or deleting a past entry breaks every entry after it (the same
-construction a blockchain or a tamper-evident audit log uses). This is what
-makes "who looked at this evidence and when" itself provable, not just the
-evidence file's own integrity (that's signing.py's job).
+Every access to evidence (capture, view, export, anchor) gets an
+append-only, signed, hash-chained entry — altering or deleting a past
+entry breaks every entry after it.
 """
 
 from __future__ import annotations
@@ -37,10 +34,8 @@ class CustodyEntry:
 
 
 class CustodyLog:
-    """Append-only log backed by SQLite. Each row's `entry_hash` covers its own
-    fields plus the previous row's `entry_hash` — breaking the chain at row N
-    invalidates every row after it, which is exactly what you want from an
-    audit trail: undetected tampering should be impossible, not just unlikely.
+    """Append-only log backed by SQLite. Each row's `entry_hash` covers its
+    own fields plus the previous row's `entry_hash`.
     """
 
     def __init__(self, db_path: Path | None = None):
@@ -128,8 +123,7 @@ class CustodyLog:
 
     def verify_chain(self) -> bool:
         """Walks the whole log, recomputing each entry's hash and checking it
-        matches both the stored hash and the next row's prev_entry_hash. A
-        single edited or deleted row anywhere breaks this.
+        matches both the stored hash and the next row's prev_entry_hash.
         """
         entries = self.history()
         prev_hash = "0" * 64

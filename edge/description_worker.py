@@ -1,17 +1,9 @@
-"""Async enrichment for slow (VLM) event descriptions.
+"""Runs slow VLM description calls on a background thread.
 
-Real Qwen2.5-VL inference via Ollama takes ~10s+ on CPU (verified — see
-PROJECT_STATUS.md). `edge/pipeline.py`'s frame loop cannot afford to block on
-that: at one call per event, a single VLM description would stall
-`source.frames()` for 10+ seconds, dropping hundreds of frames of tracking
-for every alert.
-
-The fix: an event is created and sent immediately with a fast
-`TemplateDescriber` result (sub-millisecond, no model call) so alerting stays
-real-time. If a slower backend (qwen-local/frontier) is configured, the
-event+frame is handed to this worker's background thread, which calls the
-real describer at its own pace and PATCHes the richer description in once
-it's ready — the alert already fired; this just improves it after the fact.
+An event is created immediately with a fast template description so
+alerting stays real-time. If a slower backend (qwen-local/frontier) is
+configured, this worker calls it and patches the richer description in
+once it's ready.
 """
 
 from __future__ import annotations

@@ -1,16 +1,7 @@
-"""Sign-at-source evidence chain (DECISIONS.md D6).
+"""Sign-at-source evidence chain.
 
-Hashes and signs a clip the moment it's written, with a key that lives on this
-device. This is a minimal, dependency-light implementation of the same idea
-C2PA formalizes (capture-time signed manifest) — not a certified C2PA
-implementation. Upgrading to the full C2PA toolchain (X.509 device certs,
-standard manifest schema) is a Phase 2.2 task; the interface here
-(hash + sign + write a sidecar manifest) won't need to change shape.
-
-This also fixes the original MVP's evidence bug: ipfs_convertion.py returned a
-`cid` that was only assigned inside a try block, raising UnboundLocalError on
-any IPFS failure. Hashing/signing here is independent of IPFS and always
-succeeds or raises clearly — IPFS upload is a separate, optional step.
+Hashes and signs a clip the moment it's written, with a key that lives
+on this device, and writes a sidecar manifest.
 """
 
 from __future__ import annotations
@@ -41,9 +32,9 @@ class Manifest:
 
 
 def _load_or_create_key() -> Ed25519PrivateKey:
-    """One key per device, generated on first run and reused after. Losing this
-    file breaks the ability to prove past evidence came from this device —
-    back it up like any other credential.
+    """One key per device, generated on first run and reused after. Losing
+    this file breaks the ability to prove past evidence came from this
+    device — back it up like any other credential.
     """
     key_path = settings.evidence_key_path
     if key_path.exists():

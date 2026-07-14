@@ -1,14 +1,8 @@
-"""Context engine (DECISIONS.md D4/D6, VISION.md L2).
+"""Context engine.
 
-Knows the site's *normal* — schedules, expected vehicles, roles — so an alert
-only fires when reality contradicts expectation. This is the single biggest
-false-alarm killer described in VISION.md: "the cleaner comes Tuesday 6pm"
-should suppress that exact event, not require retraining a model.
-
-Fully rule-based and free — no ML, no API, no download. This is the layer
-that runs *before* anything gets to a VLM or a human: cheap, deterministic,
-and it's where most of the false-alarm reduction actually happens in
-practice, not in the detector.
+Knows the site's normal — schedules, expected vehicles, roles — so an
+alert only fires when reality contradicts expectation. Fully rule-based,
+no ML, no API.
 """
 
 from __future__ import annotations
@@ -48,9 +42,8 @@ class ContextEngine:
         self.schedule_rules.append(rule)
 
     def should_suppress(self, label: str, when: datetime | None = None) -> tuple[bool, str]:
-        """Returns (suppressed, reason). An event that matches a schedule rule
-        is expected, not a threat — suppress it and say why, so the operator
-        can audit *why* nothing fired, not just trust a black box.
+        """Returns (suppressed, reason). An event matching a schedule rule is
+        expected, not a threat.
         """
         when = when or datetime.now(timezone.utc)
         for rule in self.schedule_rules:

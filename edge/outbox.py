@@ -1,8 +1,6 @@
-"""Store-and-forward outbox (Phase 2.3, VISION.md "cutting the internet must
-not erase evidence"). edge/cloud_client.py previously just logged a warning
-and dropped the event on a failed send — fine for a dev laptop with a stable
-connection, wrong for a site that might lose internet for hours. Failed sends
-now queue here and get retried; nothing is lost to a network blip.
+"""Store-and-forward outbox.
+
+A failed cloud send queues here and gets retried instead of being dropped.
 """
 
 from __future__ import annotations
@@ -94,9 +92,7 @@ class Outbox:
 
 def retry_pending(outbox: Outbox, sender) -> int:
     """Attempts to resend every queued item via `sender(payload) -> bool`.
-    Returns the number successfully sent. Call periodically from the edge
-    loop (throttled — see edge/pipeline.py) so a reconnect drains the backlog
-    without a separate process.
+    Returns the number successfully sent.
     """
     sent = 0
     for item in outbox.pending():

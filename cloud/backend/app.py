@@ -1,20 +1,6 @@
-"""Local-first cloud backend (DECISIONS.md D8).
+"""Local FastAPI backend for events, heartbeats, and pipeline control.
 
-Replaces two things from the original MVP at once:
-
-1. `Control Station/app.py`, which polled `requests.get('Replace with your API
-   URL')` — a literal placeholder — every 10 seconds against a Lambda that
-   doesn't exist yet in dev. This app *is* the API; nothing to poll, nothing to
-   configure before it runs.
-2. AWS API Gateway, whose free tier is 12-months-only and bills from request one
-   after that (see DECISIONS.md D8). FastAPI run locally is the free substitute;
-   Lambda/DynamoDB stay available behind SENTINEL_STORAGE_BACKEND=dynamodb
-   since both of *those* are permanently free at dev scale.
-
-Also fixes the original `/assign/<cid>` endpoint, which had zero
-authentication — anyone reaching the Flask app could mark evidence as
-assigned. Here, write endpoints require a bearer token when
-SENTINEL_API_TOKEN is set.
+Write endpoints require a bearer token when SENTINEL_API_TOKEN is set.
 """
 
 from __future__ import annotations
@@ -58,10 +44,9 @@ _pipeline_log_lines: deque[str] = deque(maxlen=500)
 
 
 def _drain_pipeline_output(proc: subprocess.Popen) -> None:
-    """Runs on its own thread for the lifetime of the pipeline subprocess —
-    continuously reads stdout into a bounded deque so GET /pipeline/logs can
-    do a non-destructive tail read at any time, instead of a one-shot drain
-    that would lose lines between polls.
+    """Runs on a background thread for the pipeline subprocess's lifetime,
+    continuously draining stdout into a bounded deque so /pipeline/logs can
+    do a non-destructive tail read at any time.
     """
     if proc.stdout is None:
         return
@@ -88,10 +73,8 @@ def health() -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard() -> str:
-    """Single live dashboard: a browser webcam preview (visual only — real
-    detection runs from edge/main.py on the machine with the trained model
-    and physical camera) plus real-time events/descriptions/logs streamed
-    from GET /events and GET /events/stream.
+    """Single live dashboard: a browser webcam preview plus real-time
+    events/descriptions/logs streamed from GET /events and GET /events/stream.
     """
     return _DASHBOARD_HTML
 
@@ -126,8 +109,7 @@ def list_events(limit: int = 100, org_id: str | None = None) -> list[EventOut]:
 @app.get("/events/stream")
 async def stream_events():
     """Server-Sent Events — a connected client gets pushed new events as they
-    happen, instead of polling. Replaces the original MVP's
-    `apscheduler`-driven 10-second poll against a placeholder URL.
+    happen, instead of polling.
     """
 
     async def event_generator():
@@ -153,10 +135,8 @@ def assign_event(event_id: str) -> dict:
 
 @app.patch("/events/{event_id}/description", dependencies=[Depends(require_token)])
 def update_event_description(event_id: str, payload: dict) -> dict:
-    """Backs the async VLM-enrichment path (edge/description_worker.py): the
-    event already exists (created with a fast template description so
-    alerting isn't blocked), and this arrives later with a richer
-    description once the slower VLM call finishes.
+    """Patches a richer description onto an event that was already created
+    with a fast template description.
     """
     description = payload.get("description")
     severity = payload.get("severity")
@@ -177,10 +157,8 @@ def update_event_description(event_id: str, payload: dict) -> dict:
 
 @app.post("/heartbeat")
 def heartbeat(payload: dict) -> dict:
-    """A site pings this periodically (edge/cloud_client.py send_heartbeat).
-    A site that stops pinging is flagged `silent` by /sites/status — VISION.md's
-    "silence is an alarm": camera unplugged, tampered, or powered off all look
-    identical from here, and all three deserve the same alert.
+    """A site pings this periodically. A site that stops pinging is flagged
+    `silent` by /sites/status.
     """
     site_id = payload.get("site_id")
     if not site_id:
@@ -200,10 +178,8 @@ def sites_status() -> list[dict]:
 
 @app.put("/live-frame", dependencies=[Depends(require_token)])
 async def put_live_frame(request: Request) -> dict:
-    """edge/live_frame_streamer.py PUTs the latest JPEG-encoded, detection-box
-    -annotated frame here at a throttled rate — see that module for why this
-    is decoupled from the frame loop (the same reason edge/description_worker.py
-    exists: nothing that can stall or be slow may sit inline in _process_frame).
+    """edge/live_frame_streamer.py PUTs the latest JPEG-encoded, annotated
+    frame here at a throttled rate.
     """
     global _latest_frame, _latest_frame_at
     body = await request.body()
@@ -229,11 +205,9 @@ def get_live_frame() -> Response:
 
 @app.get("/live-frame/stream")
 async def stream_live_frame():
-    """MJPEG stream (multipart/x-mixed-replace) — the dashboard's <img> tag
-    consumes this directly, no client-side JS needed to decode frames.
-    Polls the in-memory latest frame at a fixed rate; stale frames (older
-    than a few seconds — no edge pipeline currently pushing) are skipped so
-    the stream visibly stops rather than freezing on an ancient frame.
+    """MJPEG stream (multipart/x-mixed-replace) the dashboard's <img> tag
+    consumes directly. Stale frames (no pipeline currently pushing) are
+    skipped so the stream stops rather than freezing on an old frame.
     """
 
     async def frame_generator():
@@ -257,10 +231,8 @@ async def stream_live_frame():
 
 @app.post("/pipeline/start", dependencies=[Depends(require_token)])
 def start_pipeline() -> dict:
-    """Spawns `python -m edge.main --no-preview` as a child of this server
-    process, so the dashboard's Start button replaces a manual terminal
-    command. See the module-level note above on the camera-permission
-    limit this inherits.
+    """Spawns `python -m edge.main --no-preview` as a child process, so the
+    dashboard's Start button replaces a manual terminal command.
     """
     global _pipeline_process
     with _pipeline_lock:
@@ -306,24 +278,17 @@ def pipeline_status() -> dict:
 
 @app.get("/pipeline/logs")
 def pipeline_logs(lines: int = 50) -> dict:
-    """Tail of the pipeline subprocess's stdout/stderr — lets the dashboard
-    show real errors (e.g. camera permission, missing model file) instead of
-    a silent "not running" with no explanation. Non-destructive: reads from
-    the bounded deque _drain_pipeline_output fills continuously, so repeated
-    polls don't lose lines the way a one-shot pipe drain would.
+    """Tail of the pipeline subprocess's stdout/stderr, so the dashboard can
+    show real errors instead of a silent "not running".
     """
     return {"lines": list(_pipeline_log_lines)[-lines:]}
 
 
 @app.post("/recordings/clear", dependencies=[Depends(require_token)])
 def clear_recordings() -> dict:
-    """Deletes recorded clip files (and their signed manifests) from
-    settings.clips_dir, and clears the pipeline log buffer. Deliberately
-    does NOT touch the events database or evidence/custody.py's
-    chain-of-custody log — those are the tamper-evident integrity record,
-    not disposable UI state, and clearing them silently would defeat the
-    point of a custody chain. Refuses to run while the pipeline is actively
-    recording, to avoid deleting a clip mid-write.
+    """Deletes recorded clip files and their signed manifests. Does not touch
+    the events database or the chain-of-custody log. Refuses to run while
+    the pipeline is actively recording.
     """
     with _pipeline_lock:
         if _pipeline_process is not None and _pipeline_process.poll() is None:

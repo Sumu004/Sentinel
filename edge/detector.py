@@ -1,12 +1,8 @@
 """Detection backends.
 
-D1 in DECISIONS.md targets a fine-tuned RF-DETR/YOLO12 bake-off. That needs a
-trained model and a labelled dataset (Phase 2.1) — neither exists yet. Rather than
-fake it, this module ships a real, zero-download, zero-dependency default
-(background-subtraction motion detection) that proves the full pipeline
-(source -> detect -> track -> debounce -> event -> evidence) end to end today,
-plus a `ModelDetector` stub with the exact interface RF-DETR/YOLO12 will fill in
-Phase 2.1. Swapping is a one-line config change (SENTINEL_DETECTOR_BACKEND).
+MotionDetector: zero-download background-subtraction default.
+ModelDetector: runs a trained RF-DETR/YOLO12 model. Swap via
+SENTINEL_DETECTOR_BACKEND.
 """
 
 from __future__ import annotations
@@ -33,10 +29,7 @@ class Detector:
 
 class MotionDetector(Detector):
     """Background-subtraction detector. Free, no model weights, no internet.
-
-    Not a substitute for the trained model in D1 — it answers "did something
-    move" not "what is it." Good enough to validate the rest of the pipeline
-    (tracking, debouncing, evidence chain, cloud sync) before Phase 2.1 lands.
+    Answers "did something move", not "what is it".
     """
 
     def __init__(self, min_area: int = 1500):
@@ -60,16 +53,12 @@ class MotionDetector(Detector):
 
 
 class ModelDetector(Detector):
-    """Loads a fine-tuned YOLO/RF-DETR model (DECISIONS.md D1) and runs real
-    inference. Accepts an Ultralytics `.pt` (the bake-off winner from
-    training/, or a COCO-pretrained yolo12n.pt to start) — `ultralytics`
-    transparently loads both fine-tuned and pretrained checkpoints.
+    """Loads a fine-tuned YOLO/RF-DETR model and runs inference. Accepts an
+    Ultralytics `.pt` checkpoint (fine-tuned or COCO-pretrained).
 
     Maps model output to the same `Detection` dataclass the motion detector
-    emits, so the tracker/debounce/recorder pipeline downstream is identical
-    regardless of backend. Honours SENTINEL_DETECT_CLASSES — only the
-    configured classes raise events, everything else is ignored (e.g. `animal`
-    can be detected for the suppression logic without alarming).
+    emits. Honours SENTINEL_DETECT_CLASSES — only configured classes raise
+    events.
     """
 
     def __init__(self, model_path: str, conf: float = 0.35):

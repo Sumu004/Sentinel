@@ -1,12 +1,7 @@
-"""Posts events from the edge to the cloud backend (cloud/backend/app.py).
+"""Posts events from the edge to the cloud backend.
 
-Talks to a plain local FastAPI route, not AWS API Gateway — see DECISIONS.md D8
-on why API Gateway's free tier is the one to avoid. The request shape is
-identical regardless of what's running behind SENTINEL_API_HOST/PORT, so
-pointing this at a real deployed backend later is a config change.
-
-Phase 2.3: a failed send now queues in edge/outbox.py instead of being
-dropped — see send_event_or_queue and edge/pipeline.py's periodic retry.
+A failed send queues in edge/outbox.py instead of being dropped — see
+send_event_or_queue and edge/pipeline.py's periodic retry.
 """
 
 from __future__ import annotations
@@ -73,10 +68,8 @@ def send_event_or_queue(event: Event, outbox: Outbox) -> bool:
 
 
 def send_description_update(event_id: str, description: str, severity: str) -> bool:
-    """PATCHes a richer description onto an already-sent event. Used by
-    edge/description_worker.py once a slow VLM call finishes — the event
-    itself was already sent immediately with a fast template description so
-    alerting isn't blocked on this.
+    """Patches a richer description onto an already-sent event, once a slow
+    VLM call finishes.
     """
     try:
         response = requests.patch(
@@ -93,10 +86,7 @@ def send_description_update(event_id: str, description: str, severity: str) -> b
 
 
 def send_heartbeat() -> bool:
-    """Pings the backend so it knows this site is alive. A stopped heartbeat
-    is itself an alarm (VISION.md "silence is an alarm") — see
-    cloud/backend/app.py's /heartbeat and /sites/status endpoints.
-    """
+    """Pings the backend so it knows this site is alive."""
     try:
         response = requests.post(
             f"{_base_url()}/heartbeat",

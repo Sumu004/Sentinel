@@ -1,14 +1,7 @@
 """Multi-object tracking + event debouncing.
 
-D3 in DECISIONS.md targets ByteTrack. ByteTrack isn't pip-installable as a clean
-library (it ships as a research repo) so it's deferred to Phase 2.1 alongside the
-real detector. This module ships a small, dependency-free centroid tracker that
-satisfies the same need right now: turn N raw detections per frame into a
-*track* that persists across frames, so "one person for 8 seconds" becomes one
-event instead of ~240 raw detections.
-
-This directly fixes the bug in the original MVP's main.py, which appended every
-matching frame individually with no tracking or debouncing at all.
+A dependency-free centroid tracker: turns N raw detections per frame
+into a track that persists across frames.
 """
 
 from __future__ import annotations
@@ -38,9 +31,8 @@ class Track:
 
 @dataclass
 class CentroidTracker:
-    """Nearest-centroid tracker. Good enough to debounce events; swap for
-    ByteTrack in Phase 2.1 without touching anything downstream — both produce
-    a list[Track] with the same fields used by events.py.
+    """Nearest-centroid tracker. Produces a list[Track] with the same fields
+    used by events.py.
     """
 
     max_distance: float = 75.0

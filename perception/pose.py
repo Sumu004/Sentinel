@@ -1,17 +1,9 @@
-"""Pose/action — fall detection (VISION.md L1, DECISIONS.md targets RTMPose edge / ViTPose cloud).
+"""Pose/action — fall detection.
 
-RTMPose needs the mmpose stack (heavy, awkward to pip-install cleanly — the
-same shape of problem D3 hit with ByteTrack). Rather than ship nothing, this
-splits the concern in two:
-
-- `YoloPoseEstimator` — real keypoint inference using Ultralytics' pose models
-  (`yolo11n-pose.pt`, auto-downloaded, Apache-2.0, free). Not RTMPose, but a
-  real, working, free pose backbone today.
-- `analyze_fall(keypoints)` — pure logic, no model dependency, so it's fully
-  unit-testable without a network call or GPU. A fall is inferred from body
-  aspect ratio + hip-below-shoulder inversion, a standard free heuristic
-  (not a trained fall classifier — upgrade path is a fine-tuned action model
-  once real fall footage exists to validate against).
+YoloPoseEstimator: keypoint inference via Ultralytics' pose models
+(yolo11n-pose.pt, auto-downloaded). analyze_fall(keypoints): a fall is
+inferred from body aspect ratio + hip-below-shoulder inversion — a
+heuristic, not a trained classifier.
 """
 
 from __future__ import annotations
@@ -60,14 +52,12 @@ _L_HIP, _R_HIP = 11, 12
 
 
 def analyze_fall(keypoints: np.ndarray, aspect_ratio_threshold: float = 1.0) -> bool:
-    """Free heuristic fall detector: a standing person's bounding box is
-    taller than wide and hips sit below shoulders; a fallen person's box
-    flattens out (wide-vs-tall inverts) and hip/shoulder height collapses
-    toward the same level. Both conditions must hold to reduce false
-    positives from someone merely bending over.
+    """A standing person's bounding box is taller than wide with hips above
+    shoulders; a fallen person's box flattens out and hip/shoulder height
+    collapses toward the same level. Both conditions must hold.
 
-    `keypoints` is (17, 2) in COCO order; a (0, 0) entry means "not detected"
-    and is ignored.
+    `keypoints` is (17, 2) in COCO order; a (0, 0) entry means "not
+    detected" and is ignored.
     """
     valid = keypoints[(keypoints[:, 0] > 0) | (keypoints[:, 1] > 0)]
     if valid.shape[0] < 4:

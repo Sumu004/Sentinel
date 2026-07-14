@@ -1,24 +1,13 @@
-"""Scoring system for Sentinel (see TESTING.md for the protocol that produces
-the inputs to these functions).
+"""Scoring system for Sentinel (see TESTING.md for the protocol).
 
-Three separate scores, deliberately kept apart because they measure different
-failure modes and the product owner asked for separate rates:
+Three separate scores:
 
-1. DETECTION rate  (L1 perception) — did the detector find and correctly
-   classify the objects that were actually there? Precision/recall/F1 per class
-   via IoU matching, plus the unattended-site metric: false alarms per camera
-   per day.
-
-2. DESCRIPTION rate (L2 reasoning)  — given a real event, did the generated
-   natural-language description correctly characterise it (right subject, right
-   action, right severity) without hallucinating?
-
-3. SYSTEM score (end-to-end)        — did the right alert, with correct
-   severity and sealed evidence, actually reach the operator? A composite that
-   only rewards an event that succeeded at every stage.
-
-All three are intentionally simple, transparent, and runnable on a laptop — no
-ML needed to *score*, only to produce the predictions being scored.
+1. Detection rate (L1) — precision/recall/F1 per class via IoU matching,
+   plus false alarms per camera per day.
+2. Description rate (L2) — subject/action/severity accuracy and
+   hallucination rate.
+3. System score (end-to-end) — right alert, right severity, sealed
+   evidence, in time.
 """
 
 from __future__ import annotations
@@ -68,9 +57,9 @@ class DetectionScore:
 def score_detections(
     preds: list[PredBox], gts: list[GTBox], iou_threshold: float = 0.5
 ) -> DetectionScore:
-    """Greedy IoU matching (highest-confidence pred first), per the standard
-    object-detection convention. Each GT box can be matched at most once;
-    unmatched preds are false positives, unmatched GTs are false negatives.
+    """Greedy IoU matching (highest-confidence prediction first). Each GT box
+    is matched at most once; unmatched predictions are false positives,
+    unmatched GTs are false negatives.
     """
     counts: dict[str, dict[str, int]] = {}
 
@@ -126,10 +115,8 @@ def score_detections(
 
 
 def false_alarms_per_day(spurious_events: int, hours_observed: float) -> float:
-    """The metric that actually matters for an unattended site: how often does
-    the system page someone when nothing happened? Computed over event-free
-    footage (see TESTING.md). Lower is better; this is the dominant driver of
-    whether an operator keeps trusting the alerts.
+    """How often the system alerts when nothing happened, computed over
+    event-free footage. Lower is better.
     """
     if hours_observed <= 0:
         raise ValueError("hours_observed must be > 0")
@@ -158,15 +145,11 @@ def score_description(
     predicted_text: str, gt: DescriptionGT, hallucination_terms: list[str] | None = None
 ) -> DescriptionResult:
     """Scores a generated description against human-labelled attributes by
-    keyword presence. This is a transparent rubric harness, not a final word —
-    for nuanced grading swap in an LLM-judge that returns the same three
-    booleans. Keeping it keyword-based means the score is explainable and
-    reproducible offline.
+    keyword presence.
 
     `hallucination_terms`: words that, if present, indicate the description
-    asserted something that wasn't in the event (e.g. "weapon" when the GT is a
-    delivery). A hallucination zeroes the score regardless of other matches —
-    a confident wrong alarm is worse than a vague right one.
+    asserted something not in the event. A hallucination zeroes the score
+    regardless of other matches.
     """
     text = predicted_text.lower()
     subject_ok = gt.subject.lower() in text
@@ -208,9 +191,8 @@ class EventOutcome:
 
 
 def system_score(outcomes: list[EventOutcome], weights: dict[str, float] | None = None) -> dict[str, float]:
-    """End-to-end score. An event only fully 'counts' if it cleared every
-    stage; partial credit is given per-stage so a regression is diagnosable
-    (e.g. detection fine, descriptions slipping). The composite is the weighted
+    """End-to-end score. An event only fully counts if it cleared every
+    stage; partial credit is given per-stage. The composite is the weighted
     mean of the per-stage pass rates.
     """
     if not outcomes:

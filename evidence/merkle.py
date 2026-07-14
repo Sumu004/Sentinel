@@ -1,10 +1,8 @@
-"""Merkle-tree daily anchoring (DECISIONS.md D6).
+"""Merkle-tree daily anchoring.
 
-Rather than anchor every clip individually (many OpenTimestamps submissions,
-slow, hammers the public calendar servers), the day's clip hashes are combined
-into one Merkle tree; only the *root* gets anchored. Anyone can still prove any
-single clip was part of that day's root via a short inclusion proof — the
-same trick TLS Certificate Transparency and most real audit logs use.
+The day's clip hashes are combined into one tree; only the root gets
+anchored. Any single clip can still be proven part of that day's root
+via a short inclusion proof.
 """
 
 from __future__ import annotations

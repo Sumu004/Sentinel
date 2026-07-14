@@ -1,10 +1,5 @@
-"""OSNetReID (perception/reid.py) — real torchreid + real ImageNet-pretrained
-OSNet weights, not mocked. `torchreid` installs via pip cleanly but its own
-import chain calls `import gdown` without declaring it as a dependency;
-`ModuleNotFoundError: No module named 'gdown'` on first import was the real
-blocker, not a packaging dead end — `pip install torchreid gdown` closes it.
-These tests exercise the actual model (small, ~3MB, already cached after
-first run) rather than mocking torch/torchreid.
+"""Tests for OSNetReID against real torchreid and real pretrained OSNet
+weights, not mocked.
 """
 
 import numpy as np

@@ -1,9 +1,6 @@
-"""Video source abstraction.
+"""Video source abstraction — webcam or RTSP/ONVIF IP camera.
 
-Loophole this closes: the MVP hardcoded `cv2.VideoCapture(0)` — only a laptop
-webcam could ever be the input. Real sites use RTSP/ONVIF IP cameras. Both sides
-of that interface live here so swapping is a config change (SENTINEL_SOURCE_KIND),
-not a rewrite — see DECISIONS.md D8.
+Swap via SENTINEL_SOURCE_KIND.
 """
 
 from __future__ import annotations
@@ -27,11 +24,7 @@ class VideoSource:
 
 
 class OpenCVSource(VideoSource):
-    """Wraps cv2.VideoCapture for both webcam indices and RTSP URLs.
-
-    This single class serves both 'free now' (webcam_index) and 'real later'
-    (rtsp_url) — cv2.VideoCapture accepts either an int or a URL string.
-    """
+    """Wraps cv2.VideoCapture for both webcam indices and RTSP URLs."""
 
     def __init__(self, target: int | str):
         self._target = target

@@ -1,7 +1,5 @@
-"""ByteTrackTracker wraps supervision's real ByteTrack (DECISIONS.md D3) —
-these tests exercise the actual algorithm, not a mock, since the whole point
-was proving a genuine pip-installable ByteTrack exists and works (the
-research-repo-only version was the reason it got deferred originally).
+"""Tests for ByteTrackTracker against the real supervision ByteTrack
+implementation, not mocked.
 """
 
 from edge.bytetrack_tracker import ByteTrackTracker, make_tracker

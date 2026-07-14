@@ -1,20 +1,8 @@
-"""Real ByteTrack integration (DECISIONS.md D3).
+"""ByteTrack tracker via the `supervision` library.
 
-D3 originally deferred ByteTrack because the reference implementation only
-ever shipped as an un-packaged research repo — no clean `pip install`. That
-gap is now closed for real: `supervision` (Roboflow's own library, MIT
-license, actively maintained — the same org behind RF-DETR) ships a proper,
-pip-installable reimplementation of the actual ByteTrack algorithm.
-
-`sv.ByteTrack` is flagged deprecated as of supervision 0.28 (removed in
-0.30) in favor of a renamed API upstream — imported here from its stable
-submodule path to avoid the deprecation warning noise; the underlying class
-and algorithm are unchanged.
-
-Exposes the exact same `update(detections) -> list[Track]` interface as
-`edge/tracker.py CentroidTracker`, so this is a real drop-in swap, not a
-parallel implementation — `edge/pipeline.py` doesn't need to know which one
-it's holding.
+Imported from its stable submodule path (`sv.ByteTrack` is deprecated as
+of supervision 0.28). Exposes the same `update(detections) -> list[Track]`
+interface as `edge/tracker.py`'s `CentroidTracker`, so it's a drop-in swap.
 """
 
 from __future__ import annotations

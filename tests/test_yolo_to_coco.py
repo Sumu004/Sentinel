@@ -57,11 +57,8 @@ def test_convert_dataset_handles_background_images(tmp_path: Path):
 
 
 def _make_voc_shaped_dataset(root: Path) -> Path:
-    """Mirrors the real VOC.yaml shape (train: a *list* of dirs, e.g.
-    images/train2012 + images/train2007) — a real Colab run against
-    `data=VOC.yaml` crashed with `TypeError: unsupported operand type(s) for
-    /: 'PosixPath' and 'list'` because the converter assumed a single string
-    path per split.
+    """Mirrors the real VOC.yaml shape: train is a list of dirs
+    (images/train2012 + images/train2007), not a single string path.
     """
     for split in ["train2007", "train2012", "val2007"]:
         (root / "images" / split).mkdir(parents=True)
@@ -91,10 +88,8 @@ def _make_voc_shaped_dataset(root: Path) -> Path:
 
 
 def test_convert_dataset_accepts_string_out_dir(tmp_path: Path):
-    """Regression test: the notebook passes `COCO_DIR = '/content/voc_coco'`
-    as a plain string (not a Path). `convert_dataset` must normalize it —
-    without that, `out_dir / coco_split_name` inside the function raises
-    `TypeError: unsupported operand type(s) for /: 'str' and 'str'`.
+    """Regression test: `convert_dataset` must normalize a plain string
+    `out_dir` to a Path.
     """
     data_yaml = _make_voc_shaped_dataset(tmp_path / "voc_ds")
     out_dir_str = str(tmp_path / "coco_ds_str")
@@ -124,14 +119,9 @@ def test_convert_dataset_merges_list_of_dirs_like_real_voc_yaml(tmp_path: Path):
 
 
 def test_convert_dataset_resolves_relative_path_against_dataset_root_not_yaml_location(tmp_path: Path):
-    """Regression test for the real Colab failure: Ultralytics' VOC.yaml has
-    `path: VOC` (relative) and downloads the dataset to `DATASETS_DIR/VOC`.
-    When the yaml being read is the copy bundled *inside the ultralytics
-    package* (falls back there because DATASETS_DIR/VOC.yaml doesn't exist),
-    resolving `path: VOC` relative to that package folder points nowhere —
-    silently producing `images_dirs = []` for every split (counts == {}), not
-    an error. `dataset_root` must override this to the actual download
-    location regardless of where the yaml file itself lives.
+    """Regression test: `dataset_root` must override where `path:` in the
+    yaml resolves relative to, regardless of where the yaml file itself
+    lives.
     """
     dataset_root = tmp_path / "actual_datasets_dir"
     (dataset_root / "VOC" / "images" / "train2007").mkdir(parents=True)

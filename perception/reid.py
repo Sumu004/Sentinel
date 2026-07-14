@@ -1,19 +1,9 @@
-"""Re-identification (VISION.md L1, DECISIONS.md D3 targets OSNet for cross-camera re-ID).
+"""Re-identification.
 
-OSNet's real gap turned out to be a missing declared dependency, not a
-packaging dead end: `pip install torchreid` succeeds, but the first `import
-torchreid` crashes with `ModuleNotFoundError: No module named 'gdown'`
-because `torchreid`'s own dataset-download code imports `gdown` without
-declaring it as a dependency. `pip install torchreid gdown` together closes
-the gap for real — verified: `torchreid.reid.models.build_model("osnet_x0_25",
-pretrained=True)` downloads real ImageNet-pretrained OSNet weights and
-returns real 512-d embeddings.
-
-`HistogramReID` (HSV color-histogram, cosine similarity) stays as the free,
-zero-download default — a legitimate re-ID technique on its own, not a
-placeholder. `OSNetReID` is the real deep-embedding upgrade behind the exact
-same `ReIDEmbedder` interface, so `Gallery` doesn't need to change at all to
-use either one.
+HistogramReID: HSV color-histogram, cosine similarity — free,
+zero-download default. OSNetReID: deep embeddings via torchreid (also
+needs `gdown` installed — torchreid's dataset-download code imports it
+without declaring it). Both implement the same ReIDEmbedder interface.
 """
 
 from __future__ import annotations
@@ -45,10 +35,8 @@ class HistogramReID(ReIDEmbedder):
 
 
 class OSNetReID(ReIDEmbedder):
-    """Real OSNet deep re-ID embedding (DECISIONS.md D3), via `torchreid`.
-    Robust to lighting/angle/partial-occlusion changes that fool
-    `HistogramReID`'s color-only matching — the actual reason OSNet was the
-    original target instead of a hand-rolled heuristic.
+    """OSNet deep re-ID embedding via `torchreid`. Robust to lighting/angle/
+    partial-occlusion changes that fool `HistogramReID`'s color-only matching.
     """
 
     _MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
@@ -87,9 +75,7 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
 @dataclass
 class Gallery:
     """A small in-memory bank of known embeddings per identity, so a track
-    that disappears and reappears (different track_id from `edge/tracker.py`,
-    e.g. after occlusion or leaving/re-entering frame) can be recognized as
-    the same real-world subject rather than a brand-new one.
+    that disappears and reappears can be recognized as the same subject.
     """
 
     embedder: ReIDEmbedder

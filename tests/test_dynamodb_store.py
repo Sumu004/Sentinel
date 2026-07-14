@@ -1,8 +1,5 @@
-"""DynamoDBStore had a full implementation but zero test coverage — unlike
-SQLiteStore, nothing verified `save`/`list_recent`/`assign` actually call the
-right boto3 operations with the right shape. `boto3.resource` is mocked here
-(no real AWS account/credentials needed) so this stays a free, offline unit
-test, matching the project's zero-cost-to-test philosophy (DECISIONS.md D8).
+"""Tests for DynamoDBStore's save/list_recent/assign. boto3.resource is
+mocked, no AWS account needed.
 """
 
 from unittest.mock import MagicMock, patch
