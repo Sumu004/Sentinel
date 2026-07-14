@@ -6,7 +6,7 @@ records sealed evidence, and sends an alert.
 
 ## Demo
 
-![Sentinel live tracking demo](docs/demo/sentinel-live-demo.gif)
+![Sentinel live tracking demo](docs/demo/sentinel-live-demo.png)
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
